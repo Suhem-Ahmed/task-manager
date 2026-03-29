@@ -5,7 +5,13 @@ const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const DATA_FILE = path.join(__dirname, 'data.json');
+const DATA_DIR = path.join(__dirname, 'data');
+const DATA_FILE = path.join(DATA_DIR, 'data.json');
+
+// Ensure data directory exists
+if (!fs.existsSync(DATA_DIR)) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+}
 
 // Middleware
 app.use(cors());
@@ -54,9 +60,21 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Serve frontend static files (index.html, etc.)
+app.use(express.static(__dirname));
+
+// For SPA routing - send index.html for all non-API routes
+app.get('*', (req, res) => {
+  if (!req.path.startsWith('/api/')) {
+    res.sendFile(path.join(__dirname, 'index.html'));
+  } else {
+    res.status(404).json({ error: 'Not found' });
+  }
+});
+
 // Start server
 initializeDataFile();
 app.listen(PORT, () => {
-  console.log(`🚀 Tasks Manager Backend running at http://localhost:${PORT}`);
+  console.log(`🚀 Tasks Manager running at http://localhost:${PORT}`);
   console.log(`📁 Data file: ${DATA_FILE}`);
 });

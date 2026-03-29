@@ -7,7 +7,7 @@
 
 <!--
 
-version 10
+version 11
 ═══════════════════════════════════════════════════════════
    TASKS MANAGER  —  Usage Guide
 ═══════════════════════════════════════════════════════════
@@ -1273,7 +1273,7 @@ td input[type="checkbox"] { display: block; margin: 0 auto; }
    Delete INIT_KEY from localStorage to re-trigger sample data.
    Set API_URL to your server endpoint.
 ───────────────────────────────────────── */
-const API_URL = "http://192.168.1.102:3000/api/data"; // Backend server URL
+const API_URL = "/api/data"; // Backend server URL (relative, works with any setup)
 const STORAGE_KEY = "learningTasksData_v4"; // Fallback cache
 const INIT_KEY = "learningTasksInitialized_v4";
 const DEFAULT_CATEGORIES = ["Day2Day", "TASKS", "BASH SCRIPTING"];

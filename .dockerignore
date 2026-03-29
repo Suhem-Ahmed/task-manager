@@ -1,0 +1,33 @@
+# Dependencies
+server/node_modules/
+node_modules/
+
+# Data files (keep private)
+server/data.json
+data.json
+
+# Git
+.git/
+.gitignore
+
+# OS/IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs
+npm-debug.log
+*.log
+
+# Tests
+**/test/
+**/tests/
+**/*.test.js
+**/*.spec.js
+
+# Misc
+README.md
+LICENSE
+docker-compose.yml
+nginx.conf

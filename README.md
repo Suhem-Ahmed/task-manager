@@ -45,6 +45,69 @@ Simply open `index.html` in your browser (Chrome, Firefox, Edge, Safari).
    - Edit `index.html` line ~1276, change `API_URL` to `http://192.168.1.100:3000/api/data`
    - Access from other devices on same network
 
+### Option 3: Docker Deployment (Single Container - Recommended)
+
+Deploy as a single Docker container (backend serves frontend):
+
+```bash
+# 1. Build the Docker image
+docker build -t tasks-manager .
+
+# 2. Run the container
+# Map port 3000 (or any port) on your server to port 3000 in container
+docker run -d \
+  --name tasks-manager \
+  --restart unless-stopped \
+  -p 3000:3000 \
+  -v tasks-manager-data:/app/data \
+  tasks-manager
+
+# 3. Access the app
+# Open http://YOUR_SERVER_IP:3000
+```
+
+**Data persistence:** Your task data is stored in a Docker volume `tasks-manager-data`. To backup:
+```bash
+docker run --rm -v tasks-manager-data:/data -v $(pwd):/backup alpine tar czf /backup/data-backup.tar.gz -C /data .
+```
+
+**View logs:**
+```bash
+docker logs -f tasks-manager
+```
+
+**Stop/Start:**
+```bash
+docker stop tasks-manager
+docker start tasks-manager
+```
+
+**Update to new version:**
+```bash
+git pull
+docker build -t tasks-manager .
+docker stop tasks-manager
+docker rm tasks-manager
+docker run -d --name tasks-manager --restart unless-stopped -p 3000:3000 -v tasks-manager-data:/app/data tasks-manager
+```
+
+**Or using Docker Compose (simpler):**
+```bash
+# docker-compose.yml is provided - just run:
+docker-compose up -d
+
+# Update:
+git pull
+docker-compose down
+docker-compose up -d --build
+```
+
+**Logs:**
+```bash
+docker-compose logs -f                    # All services
+docker-compose logs -f tasks-manager-backend  # Backend only
+```
+
 ## Features
 
 ### Home (Daily View)
