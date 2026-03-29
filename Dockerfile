@@ -1,18 +1,14 @@
-# Multi-stage build
-FROM node:18-alpine AS builder
-
-WORKDIR /app
-COPY server/package*.json ./
-RUN npm ci --only=production
-
-# Final stage
 FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy dependencies from builder
-COPY --from=builder /app/node_modules ./node_modules
+# Copy package files
 COPY server/package*.json ./
+
+# Install dependencies
+RUN npm install --production
+
+# Copy application code
 COPY server/server.js ./
 COPY index.html ./
 

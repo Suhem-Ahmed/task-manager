@@ -26,14 +26,14 @@ docker rm tasks-manager 2>/dev/null || true
 
 # Build new image
 echo -e "${YELLOW}🔨 Building Docker image...${NC}"
-docker build -t tasks-manager .
+docker build --network=host -t tasks-manager .
 
 # Run new container
 echo -e "${YELLOW}▶️  Starting container...${NC}"
 docker run -d \
   --name tasks-manager \
   --restart unless-stopped \
-  -p 3000:3000 \
+  -p 7777:3000 \
   -v tasks-manager-data:/app/data \
   tasks-manager
 
@@ -45,7 +45,7 @@ fi
 
 echo ""
 echo -e "${GREEN}✅ Deployment complete!${NC}"
-echo -e "   Access your app at: ${YELLOW}http://$SERVER_IP:3000${NC}"
+echo -e "   Access your app at: ${YELLOW}http://$SERVER_IP:7777${NC}"
 echo ""
 echo -e "📋 Useful commands:"
 echo "   View logs:    docker logs -f tasks-manager"

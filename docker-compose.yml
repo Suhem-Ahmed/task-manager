@@ -6,7 +6,7 @@ services:
     container_name: tasks-manager
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "7777:3000"
     volumes:
       - tasks-manager-data:/app/data
     healthcheck:
