@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<!--
+README
+
+HOW TO USE
+==========
+1. Open:
+   - Save this file as index.html
+   - Double-click or open in any modern browser
+
+2. Home:
+   - Pick a date → shows all tasks across categories
+   - Export that date as CSV
+
+3. Categories:
+   - Select category from dropdown
+   - Add, edit, delete tasks
+   - Bulk: mark all done, export CSV
+
+4. Manage Categories:
+   - Add new category
+   - Rename category (updates all entries safely)
+   - Delete category (option to export before delete)
+
+5. Import/Export:
+   - Export JSON backup (recommended before major changes)
+   - Import JSON:
+        - Replace → overwrite all data
+        - Merge → combines without duplicates (uses IDs)
+
+6. Undo:
+   - Undo last delete action (1-step only)
+
+DATA MODEL
+==========
+Entry:
+{
+  id: string,
+  category: string,
+  date: "YYYY-MM-DD",
+  text: string,
+  done: boolean
+}
+
+STORAGE KEYS
+============
+localStorage keys:
+- learningTasksData
+- learningTasksInitialized
+
+DEFAULT CATEGORIES
+==================
+Day2Day, TASKS, BASH SCRIPTING
+(Change in DEFAULT_CATEGORIES in JS)
+
+NOTES
+=====
+- No backend required
+- Fully local
+- JSON export is your backup
+-->
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Learning Tasks Manager</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body { font-family: Arial, sans-serif; margin: 0; }
+nav { background:#333; color:white; padding:10px; }
+nav a { color:white; margin-right:15px; cursor:pointer; }
+.container { padding:15px; }
+.hidden { display:none; }
+table { width:100%; border-collapse:collapse; margin-top:10px; }
+th, td { border:1px solid #ccc; padding:6px; }
+button { margin:3px; }
+input, select { margin:5px 0; padding:5px; }
+.alert { background:#eee; padding:8px; margin:10px 0; }
+</style>
+</head>
+
+<body>
+
+<nav>
+  <a onclick="showPage('home')">Home</a>
+  <span id="categoryNav"></span>
+  <a onclick="showPage('importExport')">Import/Export</a>
+</nav>
+
+<div class="container">
+
+<!-- HOME -->
+<div id="homePage">
+<h2>Home</h2>
+<input type="date" id="homeDate">
+<button onclick="loadHome()">Load</button>
+<button onclick="exportDateCSV()">Export Date CSV</button>
+<div id="homeResults"></div>
+</div>
+
+<!-- CATEGORY -->
+<div id="categoryPage" class="hidden">
+<h2 id="categoryTitle"></h2>
+
+<input type="date" id="catDate">
+<input type="text" id="catTask" placeholder="Task">
+<label><input type="checkbox" id="catDone"> Done</label>
+<button onclick="addEntryUI()">Add Entry</button>
+
+<button onclick="markAllDone()">Mark All Done</button>
+<button onclick="exportCategoryCSV()">Export CSV</button>
+
+<div id="categoryTable"></div>
+</div>
+
+<!-- MANAGE -->
+<div id="managePage" class="hidden">
+<h2>Manage Categories</h2>
+
+<input type="text" id="newCategory" placeholder="New category">
+<button onclick="addCategoryUI()">Add</button>
+
+<div id="manageList"></div>
+</div>
+
+<!-- IMPORT EXPORT -->
+<div id="importExportPage" class="hidden">
+<h2>Import / Export</h2>
+
+<button onclick="exportJSON()">Export JSON</button>
+<br><br>
+
+<input type="file" id="importFile">
+<select id="importMode">
+<option value="merge">Merge</option>
+<option value="replace">Replace</option>
+</select>
+<button onclick="handleImport()">Import</button>
+
+<div id="importPreview"></div>
+</div>
+
+<!-- UNDO -->
+<div id="undoBar" class="alert hidden">
+Last action undone.
+<button onclick="undoLastAction()">Undo</button>
+</div>
+
+</div>
+
+<script>
+/* =========================
+   CONFIGURATION
+========================= */
+const STORAGE_KEY = "learningTasksData";
+const INIT_KEY = "learningTasksInitialized";
+
+const DEFAULT_CATEGORIES = ["Day2Day","TASKS","BASH SCRIPTING"];
+
+/* =========================
+   STATE
+========================= */
+let data = { categories: [], entries: [] };
+let currentCategory = null;
+let undoBackup = null;
+
+/* =========================
+   UTIL
+========================= */
+function save() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+function load() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (raw) data = JSON.parse(raw);
+}
+
+function uid() {
+  return "id-" + Date.now() + "-" + Math.random().toString(16).slice(2);
+}
+
+function normalizeDate(d) {
+  return d;
+}
+
+/* =========================
+   INIT
+========================= */
+function init() {
+  if (!localStorage.getItem(INIT_KEY)) {
+    data.categories = [...DEFAULT_CATEGORIES];
+
+    data.entries = [
+      {id:uid(),category:"Day2Day",date:"2026-03-29",text:"Walk",done:false},
+      {id:uid(),category:"TASKS",date:"2026-03-29",text:"Finish project",done:false},
+      {id:uid(),category:"BASH SCRIPTING",date:"2026-03-29",text:"Learn loops",done:false},
+    ];
+
+    save();
+    localStorage.setItem(INIT_KEY,true);
+  } else {
+    load();
+  }
+
+  renderNav();
+  showPage('home');
+}
+
+/* =========================
+   NAV
+========================= */
+function renderNav() {
+  let html = "Categories: ";
+  data.categories.forEach(c=>{
+    html += `<a onclick="openCategory('${c}')">${c}</a>`;
+  });
+  html += `<a onclick="showPage('manage')">[Manage]</a>`;
+  document.getElementById("categoryNav").innerHTML = html;
+}
+
+function showPage(p) {
+  document.querySelectorAll(".container > div").forEach(d=>d.classList.add("hidden"));
+  document.getElementById(p+"Page").classList.remove("hidden");
+}
+
+/* =========================
+   HOME
+========================= */
+function loadHome() {
+  const date = document.getElementById("homeDate").value;
+  const rows = data.entries.filter(e=>e.date===date);
+
+  let html = `<p>Total: ${rows.length}</p>`;
+  if (!rows.length) html += "No tasks found";
+
+  html += `<table><tr><th>Category</th><th>Date</th><th>Task</th><th>Done</th><th>Actions</th></tr>`;
+  rows.forEach(e=>{
+    html += `<tr>
+<td>${e.category}</td>
+<td>${e.date}</td>
+<td>${e.text}</td>
+<td><input type="checkbox" ${e.done?"checked":""} onclick="toggleDone('${e.id}')"></td>
+<td>
+<button onclick="deleteEntry('${e.id}')">Delete</button>
+</td>
+</tr>`;
+  });
+  html += "</table>";
+
+  document.getElementById("homeResults").innerHTML = html;
+}
+
+/* =========================
+   CATEGORY
+========================= */
+function openCategory(c) {
+  currentCategory = c;
+  showPage('category');
+  document.getElementById("categoryTitle").innerText = c;
+  renderCategory();
+}
+
+function renderCategory() {
+  const rows = data.entries.filter(e=>e.category===currentCategory);
+
+  let html = "<table><tr><th>Date</th><th>Task</th><th>Done</th><th>Actions</th></tr>";
+
+  rows.forEach(e=>{
+    html += `<tr>
+<td>${e.date}</td>
+<td>${e.text}</td>
+<td><input type="checkbox" ${e.done?"checked":""} onclick="toggleDone('${e.id}')"></td>
+<td>
+<button onclick="deleteEntry('${e.id}')">Delete</button>
+</td>
+</tr>`;
+  });
+
+  html += "</table>";
+  document.getElementById("categoryTable").innerHTML = html;
+}
+
+function addEntryUI() {
+  const d = document.getElementById("catDate").value;
+  const t = document.getElementById("catTask").value;
+  const done = document.getElementById("catDone").checked;
+
+  if (!d || !t) return alert("Invalid input");
+
+  data.entries.push({
+    id: uid(),
+    category: currentCategory,
+    date: d,
+    text: t,
+    done: done
+  });
+
+  save();
+  renderCategory();
+}
+
+/* =========================
+   CATEGORY MGMT
+========================= */
+function addCategoryUI() {
+  const name = document.getElementById("newCategory").value;
+  if (!name) return;
+
+  data.categories.push(name);
+  save();
+  renderNav();
+}
+
+function deleteCategory(name) {
+  if (!confirm("Delete category?")) return;
+
+  undoBackup = JSON.stringify(data);
+
+  data.entries = data.entries.filter(e=>e.category!==name);
+  data.categories = data.categories.filter(c=>c!==name);
+
+  save();
+  renderNav();
+}
+
+function renameCategory(oldName) {
+  const newName = prompt("New name:", oldName);
+  if (!newName) return;
+
+  data.entries.forEach(e=>{
+    if (e.category===oldName) e.category=newName;
+  });
+
+  data.categories = data.categories.map(c=>c===oldName?newName:c);
+
+  save();
+  renderNav();
+}
+
+function renderManage() {
+  let html = "";
+  data.categories.forEach(c=>{
+    html += `${c}
+    <button onclick="renameCategory('${c}')">Rename</button>
+    <button onclick="deleteCategory('${c}')">Delete</button><br>`;
+  });
+  document.getElementById("manageList").innerHTML = html;
+}
+
+document.getElementById("managePage").addEventListener("click",renderManage);
+
+/* =========================
+   ENTRY OPS
+========================= */
+function deleteEntry(id) {
+  undoBackup = JSON.stringify(data);
+  data.entries = data.entries.filter(e=>e.id!==id);
+  save();
+  renderCategory();
+}
+
+function toggleDone(id) {
+  const e = data.entries.find(x=>x.id===id);
+  if (e) e.done = !e.done;
+  save();
+}
+
+/* =========================
+   EXPORT / IMPORT
+========================= */
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(data)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "tasks-backup.json";
+  a.click();
+}
+
+function handleImport() {
+  const file = document.getElementById("importFile").files[0];
+  const mode = document.getElementById("importMode").value;
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    const imported = JSON.parse(e.target.result);
+
+    if (mode==="replace") {
+      undoBackup = JSON.stringify(data);
+      data = imported;
+    } else {
+      imported.entries.forEach(en=>{
+        if (!data.entries.find(e=>e.id===en.id)) {
+          data.entries.push(en);
+        }
+      });
+      imported.categories.forEach(c=>{
+        if (!data.categories.includes(c)) data.categories.push(c);
+      });
+    }
+
+    save();
+    renderNav();
+  };
+  reader.readAsText(file);
+}
+
+/* =========================
+   CSV
+========================= */
+function exportCSV(rows, name) {
+  let csv = "Category,Date,Task,Done\n";
+  rows.forEach(r=>{
+    csv += `${r.category},${r.date},"${r.text}",${r.done}\n`;
+  });
+
+  const blob = new Blob([csv], {type:"text/csv"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+}
+
+function exportCategoryCSV() {
+  const rows = data.entries.filter(e=>e.category===currentCategory);
+  exportCSV(rows, currentCategory+".csv");
+}
+
+function exportDateCSV() {
+  const d = document.getElementById("homeDate").value;
+  const rows = data.entries.filter(e=>e.date===d);
+  exportCSV(rows, "date-"+d+".csv");
+}
+
+/* =========================
+   UNDO
+========================= */
+function undoLastAction() {
+  if (!undoBackup) return;
+  data = JSON.parse(undoBackup);
+  save();
+  renderNav();
+}
+
+/* =========================
+   START
+========================= */
+init();
+
+</script>
+
+</body>
+</html>
