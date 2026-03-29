@@ -3,235 +3,287 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Learning Tasks Manager</title>
+<title>MSA — Tasks Manager</title>
 
 <!--
-README
-======
-- Version 8 
-- Open index.html directly in any modern browser (no server needed)
-- Data is stored in localStorage; use Export JSON to back up regularly
-- Import JSON: choose Merge (safe) or Replace (overwrites everything)
-- Add / Rename / Delete categories from the Manage page
-- Undo reverses the last destructive action (in-memory only; lost on reload)
-- Mobile: tap the ☰ button top-left to open the category drawer
+
+version 9
+═══════════════════════════════════════════════════════════
+   TASKS MANAGER  —  Usage Guide
+═══════════════════════════════════════════════════════════
+  OPENING  : Save as index.html; open in any modern browser. No server needed.
+  DATA      : Stored in localStorage. Export JSON regularly as backup.
+
+  HOME      : Pick a date → see all tasks across every category for that day.
+              Use "Date CSV" to export just that day's tasks.
+
+  CATEGORIES: Click any category in the left sidebar.
+              Add entries with the form at top. Edit/Delete per row.
+              "Mark All Done" and "Export CSV" buttons at top of list.
+
+  MANAGE    : Add new categories, rename or delete existing ones.
+              Deleting a category removes all its entries (undo available).
+
+  IMPORT / EXPORT:
+    - Export JSON   → downloads tasks-backup-YYYYMMDD.json
+    - Import JSON   → Merge (safe, keeps existing) or Replace (overwrites all)
+    - Export All CSV → every entry in one file
+    - Always Export JSON before any Replace import or category deletion.
+
+  UNDO      : The ↩ Undo button (top-right) reverses the last destructive action.
+              Only one level of undo; lost on page reload.
+
+  STORAGE KEYS (top of <script>):
+    STORAGE_KEY  — change to namespace multiple instances
+    INIT_KEY     — delete from localStorage to re-run sample data injection
+═══════════════════════════════════════════════════════════
 -->
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 
 <style>
-/* ══════════════════════════════════════════
-   DESIGN TOKENS
-══════════════════════════════════════════ */
+/* ═══════════════════════════════════════════
+   DESIGN TOKENS  —  Professional Light System
+═══════════════════════════════════════════ */
 :root {
-  --bg:        #f5f7fb;     /* main background */
-  --surface:   #ffffff;     /* cards */
-  --surface2:  #f1f3f7;
-  --surface3:  #e6e9f2;
-  --border:    rgba(0,0,0,0.08);
-  --border2:   rgba(0,0,0,0.15);
-  --accent:    #000000;
-  --accent2:   #7c6cff;
-  --accent3:   #61d89e;
-  --warn:      #f1a3a3;
-  --text:      #1a1d26;     /* main text */
-  --text2:     #000000;
-  --text3:     #33353a;
-  --radius:    12px;
-  --radius-lg: 18px;
-  --sidebar-w: 240px;
-  --nav-h:     56px;
-  --font-head: 'Inter', sans-serif;
-  --font-body: 'Inter', sans-serif;
-  --font-mono: 'Courier New', monospace;
-  --shadow-md: 0 8px 32px rgba(0,0,0,.5);
-  --glow:      0 0 24px rgba(108,140,255,.18);
+  /* Surface palette */
+  --white:       #ffffff;
+  --gray-25:     #fafafa;
+  --gray-50:     #f5f5f5;
+  --gray-100:    #ebebeb;
+  --gray-200:    #d6d6d6;
+  --gray-300:    #b8b8b8;
+  --gray-400:    #8f8f8f;
+  --gray-500:    #666666;
+  --gray-600:    #444444;
+  --gray-700:    #2a2a2a;
+  --gray-800:    #1a1a1a;
+  --gray-900:    #111111;
+
+  /* Accent — a single, restrained ink blue */
+  --accent:      #1a56db;
+  --accent-light:#eff4ff;
+  --accent-mid:  #d1e0fe;
+
+  /* Semantic */
+  --success:     #0d7a4e;
+  --success-bg:  #ecfdf5;
+  --success-bd:  #a7f3d0;
+  --danger:      #b91c1c;
+  --danger-bg:   #fef2f2;
+  --danger-bd:   #fecaca;
+  --warn:        #b45309;
+  --warn-bg:     #fffbeb;
+
+  /* Typography */
+  --font-ui:     'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono:   'DM Mono', 'Courier New', monospace;
+
+  /* Layout */
+  --nav-h:       52px;
+  --sidebar-w:   220px;
+  --radius-sm:   5px;
+  --radius:      8px;
+  --radius-lg:   12px;
+
+  /* Shadows */
+  --shadow-xs:   0 1px 2px rgba(0,0,0,.05);
+  --shadow-sm:   0 1px 4px rgba(0,0,0,.08), 0 0 0 1px rgba(0,0,0,.04);
+  --shadow-md:   0 4px 16px rgba(0,0,0,.1), 0 0 0 1px rgba(0,0,0,.04);
+  --shadow-lg:   0 12px 40px rgba(0,0,0,.14);
 }
 
-/* ══════════════════════════════════════════
+/* ═══════════════════════════════════════════
    RESET
-══════════════════════════════════════════ */
+═══════════════════════════════════════════ */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-/* body scrolls normally — never overflow:hidden except when drawer open */
-html { height: 100%; }
+html { height: 100%; -webkit-font-smoothing: antialiased; }
 body {
-   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-  background: var(--bg);
-  color: var(--text);
+  font-family: var(--font-ui);
+  background: var(--gray-50);
+  color: var(--gray-800);
   font-size: 14px;
-  line-height: 1.6;
+  line-height: 1.5;
   min-height: 100%;
 }
 body.drawer-open { overflow: hidden; }
 
-/* subtle noise texture */
-body::before {
-  content: '';
-  position: fixed; inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  opacity: .01;
-  pointer-events: none;
-  z-index: 9998;
-}
-
-/* ══════════════════════════════════════════
-   TOP NAV
-══════════════════════════════════════════ */
+/* ═══════════════════════════════════════════
+   TOP NAVIGATION BAR
+═══════════════════════════════════════════ */
 .topnav {
   position: fixed; top: 0; left: 0; right: 0;
   height: var(--nav-h);
-  background: rgba(255,255,255,0.9);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid var(--border);
+  background: var(--white);
+  border-bottom: 1px solid var(--gray-100);
   display: flex;
   align-items: center;
-  padding: 0 14px;
-  gap: 2px;
+  padding: 0 16px 0 0;
+  gap: 0;
   z-index: 300;
-  /* prevent content from wrapping */
   flex-wrap: nowrap;
   overflow: hidden;
 }
 
 .nav-hamburger {
-  display: none; /* hidden on desktop */
+  display: none;
   background: transparent;
   border: none;
-  color: var(--text2);
-  font-size: 20px;
-  padding: 8px 10px;
+  color: var(--gray-600);
+  font-size: 18px;
+  padding: 0 16px;
+  height: var(--nav-h);
   cursor: pointer;
-  border-radius: 8px;
-  line-height: 1;
-  flex-shrink: 0;
   -webkit-tap-highlight-color: transparent;
 }
-.nav-hamburger:hover { background: var(--surface3); color: var(--text); }
+.nav-hamburger:hover { color: var(--gray-900); }
 
+/* Wordmark */
 .topnav-logo {
-  font-family: var(--font-head);
-  font-weight: 800;
-  font-size: 15px;
-  color: var(--text);
-  margin-right: 10px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  padding: 0 20px 0 16px;
+  height: var(--nav-h);
+  border-right: 1px solid var(--gray-100);
+  flex-shrink: 0;
+  text-decoration: none;
+}
+.topnav-logo-mark {
+  width: 28px; height: 28px;
+  background: var(--gray-900);
+  border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
-.topnav-logo-icon {
-  width: 24px; height: 24px;
-  background: linear-gradient(135deg, var(--accent), var(--accent2));
-  border-radius: 6px;
-  box-shadow: var(--glow);
-  flex-shrink: 0;
+.topnav-logo-mark svg { width: 14px; height: 14px; }
+.topnav-logo-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gray-900);
+  letter-spacing: -.01em;
+}
+.topnav-logo-sub {
+  font-size: 11px;
+  color: var(--gray-400);
+  font-weight: 400;
+  letter-spacing: 0;
 }
 
-.nav-links { display: flex; gap: 2px; align-items: center; }
-
+/* Nav links */
+.nav-links {
+  display: flex;
+  align-items: center;
+  height: var(--nav-h);
+  padding: 0 8px;
+  gap: 2px;
+}
 .nav-btn {
-  font-family: var(--font-body);
+  font-family: var(--font-ui);
   font-size: 13px;
   font-weight: 500;
-  color: var(--text2);
+  color: var(--gray-500);
   background: transparent;
   border: none;
-  padding: 7px 13px;
-  border-radius: 8px;
+  padding: 0 12px;
+  height: 32px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: background .15s, color .15s;
+  transition: color .12s, background .12s;
   white-space: nowrap;
   -webkit-tap-highlight-color: transparent;
+  letter-spacing: -.01em;
 }
-.nav-btn:hover  { background: var(--surface3); color: var(--text); }
-.nav-btn.active { background: var(--surface3); color: var(--accent); }
+.nav-btn:hover  { color: var(--gray-900); background: var(--gray-50); }
+.nav-btn.active { color: var(--gray-900); background: var(--gray-100); font-weight: 600; }
 
 .nav-spacer { flex: 1; min-width: 4px; }
 
+/* Undo pill */
 .nav-undo {
+  display: inline-flex; align-items: center; gap: 6px;
   font-family: var(--font-mono);
   font-size: 11px;
-  color: var(--text3);
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  padding: 6px 12px;
-  border-radius: 8px;
+  color: var(--gray-500);
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  padding: 5px 12px;
+  border-radius: 100px;
   cursor: pointer;
-  transition: all .15s;
-  display: flex; align-items: center; gap: 5px;
-  flex-shrink: 0;
+  transition: all .12s;
   white-space: nowrap;
   -webkit-tap-highlight-color: transparent;
 }
-.nav-undo:hover { border-color: var(--accent); color: var(--accent); }
+.nav-undo:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-light); }
 
-/* ══════════════════════════════════════════
-   SIDEBAR OVERLAY (dim background on mobile)
-══════════════════════════════════════════ */
+/* ═══════════════════════════════════════════
+   SIDEBAR OVERLAY
+═══════════════════════════════════════════ */
 .sidebar-overlay {
   display: none;
   position: fixed; inset: 0;
-  background: rgba(0,0,0,.6);
+  background: rgba(0,0,0,.3);
   z-index: 400;
+  backdrop-filter: blur(2px);
   -webkit-tap-highlight-color: transparent;
 }
 .sidebar-overlay.open { display: block; }
 
-/* ══════════════════════════════════════════
+/* ═══════════════════════════════════════════
    LAYOUT
-══════════════════════════════════════════ */
+═══════════════════════════════════════════ */
 .layout {
   display: flex;
   margin-top: var(--nav-h);
   min-height: calc(100vh - var(--nav-h));
 }
 
-/* ══════════════════════════════════════════
-   SIDEBAR  (desktop: sticky column | mobile: slide-in drawer)
-══════════════════════════════════════════ */
+/* ═══════════════════════════════════════════
+   SIDEBAR
+═══════════════════════════════════════════ */
 .sidebar {
   width: var(--sidebar-w);
   flex-shrink: 0;
-  background: var(--surface);
-  border-right: 1px solid var(--border);
+  background: var(--white);
+  border-right: 1px solid var(--gray-100);
   display: flex;
   flex-direction: column;
-  padding: 16px 10px;
-  gap: 2px;
-  /* sticky so it doesn't scroll with the page */
+  padding: 12px 8px;
+  gap: 1px;
   position: sticky;
   top: var(--nav-h);
   height: calc(100vh - var(--nav-h));
   overflow-y: auto;
 }
+.sidebar::-webkit-scrollbar { width: 3px; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--gray-200); border-radius: 99px; }
 
-.sidebar-section-label {
+.sidebar-section {
+  padding: 4px 8px 2px;
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 500;
-  color: var(--text3);
+  color: var(--gray-400);
   text-transform: uppercase;
-  letter-spacing: .1em;
-  padding: 0 8px;
-  margin-bottom: 6px;
-  margin-top: 2px;
+  letter-spacing: .08em;
+  margin-top: 8px;
 }
+.sidebar-section:first-child { margin-top: 0; }
 
 .sidebar-btn {
   width: 100%;
   text-align: left;
   background: transparent;
-  color: var(--text2);
+  color: var(--gray-600);
   border: none;
-  padding: 10px 12px;
-  border-radius: 9px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  font-family: var(--font-body);
+  font-family: var(--font-ui);
   font-size: 13px;
-  transition: background .15s, color .15s;
+  font-weight: 400;
+  transition: background .1s, color .1s;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -239,58 +291,74 @@ body::before {
   align-items: center;
   gap: 8px;
   -webkit-tap-highlight-color: transparent;
+  line-height: 1.4;
 }
-.sidebar-btn::before {
-  content: '';
-  width: 6px; height: 6px;
+.sidebar-dot {
+  width: 5px; height: 5px;
   border-radius: 50%;
-  background: var(--text3);
+  background: var(--gray-300);
   flex-shrink: 0;
-  transition: background .15s;
+  transition: background .1s;
 }
-.sidebar-btn:hover { background: var(--surface2); color: var(--text); }
-.sidebar-btn:hover::before { background: var(--text2); }
-.sidebar-btn.active { background: rgba(108,140,255,.12); color: var(--accent); font-weight: 500; }
-.sidebar-btn.active::before { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+.sidebar-btn:hover { background: var(--gray-50); color: var(--gray-900); }
+.sidebar-btn:hover .sidebar-dot { background: var(--gray-500); }
+.sidebar-btn.active { background: var(--accent-light); color: var(--accent); font-weight: 500; }
+.sidebar-btn.active .sidebar-dot { background: var(--accent); }
 
-/* ── drawer close button (mobile only) ── */
+.sidebar-count {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--gray-400);
+  background: var(--gray-100);
+  padding: 1px 6px;
+  border-radius: 100px;
+  flex-shrink: 0;
+}
+.sidebar-btn.active .sidebar-count { background: var(--accent-mid); color: var(--accent); }
+
+.sidebar-divider {
+  height: 1px;
+  background: var(--gray-100);
+  margin: 6px 4px;
+}
+
 .sidebar-close-btn {
   display: none;
   background: transparent;
   border: none;
-  color: var(--text3);
-  font-size: 18px;
+  color: var(--gray-400);
+  font-size: 16px;
   cursor: pointer;
-  line-height: 1;
-  padding: 4px 6px;
-  border-radius: 6px;
+  padding: 4px;
+  border-radius: var(--radius-sm);
   -webkit-tap-highlight-color: transparent;
+  line-height: 1;
 }
-.sidebar-close-btn:hover { color: var(--text); }
+.sidebar-close-btn:hover { color: var(--gray-700); background: var(--gray-100); }
 
-/* ── mobile-only nav shortcuts inside drawer ── */
 .drawer-nav {
-  display: none; /* shown only on mobile via JS */
+  display: none;
   flex-direction: column;
-  gap: 2px;
-  margin-bottom: 14px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--border);
+  gap: 1px;
+  padding-bottom: 6px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--gray-100);
 }
 
-/* ══════════════════════════════════════════
-   MAIN CONTENT AREA
-══════════════════════════════════════════ */
+/* ═══════════════════════════════════════════
+   MAIN CONTENT
+═══════════════════════════════════════════ */
 .main {
   flex: 1;
-  min-width: 0; /* prevents flex children from overflowing */
-  padding: 28px 28px 60px;
-  overflow-x: hidden;
+  min-width: 0;
+  padding: 32px 32px 80px;
+  max-width: 1100px;
 }
 
-/* ══════════════════════════════════════════
-   FLASH TOAST (bottom-center, safe on mobile)
-══════════════════════════════════════════ */
+/* ═══════════════════════════════════════════
+   TOAST MESSAGES
+═══════════════════════════════════════════ */
 #msg {
   position: fixed;
   bottom: 24px; left: 50%;
@@ -301,456 +369,724 @@ body::before {
   max-width: calc(100vw - 32px);
 }
 .message {
-  padding: 11px 22px;
-  background: var(--surface3);
-  border: 1px solid var(--accent3);
-  color: var(--accent3);
-  border-radius: 40px;
+  padding: 9px 18px;
+  background: var(--gray-900);
+  color: var(--white);
+  border-radius: 100px;
   font-family: var(--font-mono);
-  font-size: 12px;
-  box-shadow: var(--shadow-md);
-  animation: toastIn .22s ease;
+  font-size: 11.5px;
+  box-shadow: var(--shadow-lg);
+  animation: toastIn .18s ease;
   text-align: center;
   white-space: nowrap;
+  letter-spacing: .01em;
 }
-.message.error { border-color: var(--warn); color: var(--warn); }
+.message.error {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border: 1px solid var(--danger-bd);
+}
 @keyframes toastIn {
-  from { opacity: 0; transform: translateY(10px); }
+  from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* ══════════════════════════════════════════
+/* ═══════════════════════════════════════════
    PAGE HEADER
-══════════════════════════════════════════ */
-.page-header { margin-bottom: 22px; }
-.page-header h2 {
-  font-family: var(--font-head);
-  font-size: 24px;
-  font-weight: 800;
-  color: var(--text);
-  letter-spacing: -.02em;
-  line-height: 1.2;
+═══════════════════════════════════════════ */
+.page-header {
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--gray-100);
 }
-.page-header p { color: var(--text3); font-size: 13px; margin-top: 3px; }
-
-/* ══════════════════════════════════════════
-   CARDS
-══════════════════════════════════════════ */
-.card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 20px;
-  margin-bottom: 16px;
-}
-.card-title {
-  font-family: var(--font-head);
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .09em;
-  color: var(--text3);
-  margin-bottom: 14px;
-}
-
-/* ══════════════════════════════════════════
-   FORM PRIMITIVES
-   All inputs are full-width; form-stack stacks vertically.
-   On desktop, .form-row lines things up horizontally if space allows.
-══════════════════════════════════════════ */
-.form-stack {
+.page-header-inner {
   display: flex;
-  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.page-header h2 {
+  font-family: var(--font-ui);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--gray-900);
+  letter-spacing: -.02em;
+  line-height: 1.25;
+}
+.page-header p {
+  color: var(--gray-400);
+  font-size: 13px;
+  margin-top: 2px;
+}
+.page-header-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  align-items: center;
+}
+
+/* ═══════════════════════════════════════════
+   CARDS
+═══════════════════════════════════════════ */
+.card {
+  background: var(--white);
+  border: 1px solid var(--gray-100);
+  border-radius: var(--radius-lg);
+  padding: 20px 24px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-xs);
+}
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
   gap: 12px;
 }
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
+.card-title {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--gray-500);
 }
+
+/* ═══════════════════════════════════════════
+   FORM ELEMENTS
+═══════════════════════════════════════════ */
+.form-stack { display: flex; flex-direction: column; gap: 14px; }
+.form-row {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 12px;
+  align-items: start;
+}
+.form-group { display: flex; flex-direction: column; gap: 5px; }
 .form-label {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: .09em;
-  color: var(--text3);
+  letter-spacing: .07em;
+  color: var(--gray-500);
 }
 .form-inline {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+}
+.form-hint {
+  font-size: 11.5px;
+  color: var(--gray-400);
+  margin-top: 2px;
 }
 
-/* Inputs — 14px prevents iOS auto-zoom on focus */
+/* Inputs */
 input[type="text"],
 input[type="date"],
-select {
-  background: var(--surface2);
-  border: 1px solid var(--border2);
-  color: var(--text);
-  border-radius: 9px;
-  padding: 10px 13px;
-  font-family: var(--font-body);
-  font-size: 14px;
+select,
+textarea {
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  color: var(--gray-900);
+  border-radius: var(--radius-sm);
+  padding: 8px 11px;
+  font-family: var(--font-ui);
+  font-size: 13.5px;
   outline: none;
-  transition: border-color .15s, box-shadow .15s;
+  transition: border-color .12s, box-shadow .12s;
   -webkit-appearance: none;
   width: 100%;
+  line-height: 1.4;
 }
+input[type="text"]:hover,
+input[type="date"]:hover,
+select:hover { border-color: var(--gray-300); }
 input[type="text"]:focus,
 input[type="date"]:focus,
 select:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(108,140,255,.13);
+  box-shadow: 0 0 0 3px rgba(26,86,219,.1);
 }
-input[type="date"] { font-family: var(--font-mono); color-scheme: dark; }
-select { cursor: pointer; }
-select option { background: var(--surface2); }
-
+input[type="date"] { font-family: var(--font-mono); font-size: 13px; }
+select { cursor: pointer; background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%238f8f8f' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; }
+select option { background: var(--white); }
 input[type="checkbox"] {
-  width: 18px; height: 18px;
+  width: 15px; height: 15px;
   accent-color: var(--accent);
   cursor: pointer;
   flex-shrink: 0;
+  border-radius: 3px;
 }
 input[type="file"] {
-  color: var(--text2);
-  font-family: var(--font-body);
+  color: var(--gray-600);
+  font-family: var(--font-ui);
   font-size: 13px;
   width: 100%;
+  padding: 7px 0;
 }
+input::placeholder { color: var(--gray-300); }
 
-/* ══════════════════════════════════════════
+/* ═══════════════════════════════════════════
    BUTTONS
-══════════════════════════════════════════ */
+═══════════════════════════════════════════ */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  padding: 10px 18px;
-  border-radius: 9px;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
   border: none;
-  font-family: var(--font-body);
+  font-family: var(--font-ui);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: all .15s;
+  transition: all .12s;
   white-space: nowrap;
   line-height: 1;
+  letter-spacing: -.01em;
   -webkit-tap-highlight-color: transparent;
 }
-.btn-primary  { background: var(--accent); color: #fff; box-shadow: 0 2px 12px rgba(108,140,255,.3); }
-.btn-primary:hover  { background: #7b9dff; }
-.btn-primary:active { background: #5a7aee; }
-.btn-ghost    { background: var(--surface2); color: var(--text2); border: 1px solid var(--border2); }
-.btn-ghost:hover    { background: var(--surface3); color: var(--text); }
-.btn-danger   { background: rgba(255,107,107,.12); color: var(--warn); border: 1px solid rgba(255,107,107,.25); }
-.btn-danger:hover   { background: rgba(255,107,107,.22); }
-.btn-success  { background: rgba(56,217,169,.1); color: var(--accent3); border: 1px solid rgba(56,217,169,.2); }
-.btn-success:hover  { background: rgba(56,217,169,.2); }
-.btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 7px; }
+.btn:active { transform: translateY(1px); }
 
-.btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.btn-primary {
+  background: var(--gray-900);
+  color: var(--white);
+  box-shadow: var(--shadow-xs);
+}
+.btn-primary:hover { background: var(--gray-700); }
 
-/* ══════════════════════════════════════════
-   STATS STRIP
-══════════════════════════════════════════ */
-.stats-row {
+.btn-accent {
+  background: var(--accent);
+  color: var(--white);
+  box-shadow: var(--shadow-xs);
+}
+.btn-accent:hover { background: #1749c0; }
+
+.btn-outline {
+  background: var(--white);
+  color: var(--gray-700);
+  border: 1px solid var(--gray-200);
+  box-shadow: var(--shadow-xs);
+}
+.btn-outline:hover { background: var(--gray-50); border-color: var(--gray-300); color: var(--gray-900); }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--gray-500);
+  border: 1px solid transparent;
+}
+.btn-ghost:hover { background: var(--gray-100); color: var(--gray-700); }
+
+.btn-danger {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border: 1px solid var(--danger-bd);
+}
+.btn-danger:hover { background: #fee2e2; }
+
+.btn-success {
+  background: var(--success-bg);
+  color: var(--success);
+  border: 1px solid var(--success-bd);
+}
+.btn-success:hover { background: #d1fae5; }
+
+.btn-sm { padding: 5px 10px; font-size: 12px; border-radius: 4px; }
+.btn-xs { padding: 3px 8px; font-size: 11px; border-radius: 4px; }
+
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+/* ═══════════════════════════════════════════
+   STAT CARDS — Home overview strip
+═══════════════════════════════════════════ */
+.stats-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  margin-bottom: 18px;
+  gap: 12px;
+  margin-bottom: 20px;
 }
-.stat-pill {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 12px 14px;
-  text-align: center;
+.stat-card {
+  background: var(--white);
+  border: 1px solid var(--gray-100);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  box-shadow: var(--shadow-xs);
 }
 .stat-num {
-  font-family: var(--font-head);
-  font-size: 26px;
-  font-weight: 800;
-  color: var(--text);
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--gray-900);
   line-height: 1;
+  letter-spacing: -.03em;
+  font-family: var(--font-ui);
 }
-.stat-lbl {
+.stat-num.accent  { color: var(--accent); }
+.stat-num.success { color: var(--success); }
+.stat-num.warn    { color: var(--warn); }
+.stat-label {
+  font-family: var(--font-mono);
   font-size: 10px;
-  color: var(--text3);
+  color: var(--gray-400);
   text-transform: uppercase;
   letter-spacing: .08em;
-  font-family: var(--font-mono);
-  margin-top: 4px;
+  margin-top: 5px;
 }
 
-/* ══════════════════════════════════════════
-   TABLE  — scrollable horizontally on mobile
-══════════════════════════════════════════ */
+/* Progress bar inside stat */
+.stat-bar {
+  height: 3px;
+  background: var(--gray-100);
+  border-radius: 99px;
+  margin-top: 10px;
+  overflow: hidden;
+}
+.stat-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 99px;
+  transition: width .4s ease;
+}
+
+/* ═══════════════════════════════════════════
+   TABLE
+═══════════════════════════════════════════ */
 .table-wrap {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   border-radius: var(--radius);
-  border: 1px solid var(--border);
+  border: 1px solid var(--gray-100);
+  background: var(--white);
+  box-shadow: var(--shadow-xs);
 }
 table {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
-  /* keeps columns from squishing too much; horizontal scroll takes over */
-  min-width: 500px;
+  min-width: 480px;
 }
-thead { background: var(--surface2); }
+thead { background: var(--gray-25); }
 th {
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: .1em;
-  color: var(--text3);
-  padding: 10px 12px;
+  letter-spacing: .08em;
+  color: var(--gray-400);
+  padding: 10px 14px;
   text-align: left;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--gray-100);
   white-space: nowrap;
 }
 td {
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--border);
-  color: var(--text2);
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--gray-50);
+  color: var(--gray-700);
   vertical-align: middle;
 }
 tr:last-child td { border-bottom: none; }
-tbody tr { transition: background .1s; }
-tbody tr:hover { background: var(--surface2); }
+tbody tr { transition: background .08s; }
+tbody tr:hover { background: var(--gray-25); }
 
-/* ── Mobile card list (replaces table on small screens) ── */
+/* Checkbox alignment in table */
+td input[type="checkbox"] { display: block; margin: 0 auto; }
+
+/* Task text cell — make it stand out */
+.td-task {
+  color: var(--gray-900);
+  font-weight: 400;
+  max-width: 300px;
+}
+.td-comment {
+  color: var(--gray-400);
+  font-size: 12px;
+  font-style: italic;
+  max-width: 200px;
+}
+.td-date {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--gray-400);
+  white-space: nowrap;
+}
+
+/* Action buttons wrapper */
+.action-btns {
+  display: flex;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+/* ═══════════════════════════════════════════
+   MOBILE CARD LIST
+═══════════════════════════════════════════ */
 .entry-cards { display: none; }
 
 .entry-card {
-  background: var(--surface2);
-  border: 1px solid var(--border);
+  background: var(--white);
+  border: 1px solid var(--gray-100);
   border-radius: var(--radius);
   padding: 14px 16px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
+  box-shadow: var(--shadow-xs);
+  transition: box-shadow .1s;
 }
+.entry-card:hover { box-shadow: var(--shadow-sm); }
 .entry-card-top {
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 .entry-card-text {
   flex: 1;
-  font-size: 14px;
-  color: var(--text);
+  font-size: 13.5px;
+  color: var(--gray-900);
   font-weight: 500;
   line-height: 1.4;
 }
 .entry-card-meta {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--text3);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
   margin-bottom: 10px;
 }
-.entry-card-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.entry-card-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 
-/* ══════════════════════════════════════════
+/* ═══════════════════════════════════════════
    BADGES
-══════════════════════════════════════════ */
+═══════════════════════════════════════════ */
 .badge {
-  display: inline-block;
-  padding: 2px 9px;
-  border-radius: 20px;
+  display: inline-flex; align-items: center;
+  padding: 2px 8px;
+  border-radius: 100px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 500;
+  line-height: 1.6;
+  white-space: nowrap;
 }
-.badge-cat  { background: rgba(108,140,255,.14); color: var(--accent);  border: 1px solid rgba(108,140,255,.22); }
-.badge-done { background: rgba(56,217,169,.12);  color: var(--accent3); border: 1px solid rgba(56,217,169,.2); }
-.badge-todo { background: var(--surface3);        color: var(--text3);   border: 1px solid var(--border2); }
+.badge-cat  {
+  background: var(--gray-100);
+  color: var(--gray-600);
+  border: 1px solid var(--gray-200);
+}
+.badge-done {
+  background: var(--success-bg);
+  color: var(--success);
+  border: 1px solid var(--success-bd);
+}
+.badge-todo {
+  background: var(--warn-bg);
+  color: var(--warn);
+  border: 1px solid #fde68a;
+}
+.badge-date {
+  background: var(--gray-50);
+  color: var(--gray-400);
+  border: 1px solid var(--gray-100);
+  font-family: var(--font-mono);
+}
 
-/* ══════════════════════════════════════════
+/* ═══════════════════════════════════════════
    EMPTY STATE
-══════════════════════════════════════════ */
-.empty { text-align: center; padding: 44px 24px; color: var(--text3); }
-.empty-icon { font-size: 34px; margin-bottom: 10px; opacity: .45; }
-.empty-text { font-size: 13px; }
+═══════════════════════════════════════════ */
+.empty {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--gray-400);
+}
+.empty-icon {
+  font-size: 28px;
+  margin-bottom: 12px;
+  opacity: .5;
+  display: block;
+}
+.empty-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gray-600);
+  margin-bottom: 4px;
+}
+.empty-sub { font-size: 12.5px; color: var(--gray-400); }
 
-/* ══════════════════════════════════════════
-   MANAGE LIST
-══════════════════════════════════════════ */
+/* ═══════════════════════════════════════════
+   MANAGE ITEMS
+═══════════════════════════════════════════ */
+.manage-list { display: flex; flex-direction: column; gap: 6px; }
 .manage-item {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 12px 14px;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  margin-bottom: 8px;
+  background: var(--white);
+  border: 1px solid var(--gray-100);
+  border-radius: var(--radius-sm);
+  transition: box-shadow .1s;
   flex-wrap: wrap;
+}
+.manage-item:hover { box-shadow: var(--shadow-sm); }
+.manage-item-icon {
+  width: 28px; height: 28px;
+  background: var(--gray-100);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--gray-500);
 }
 .manage-item-name {
   flex: 1;
+  font-size: 13.5px;
   font-weight: 500;
-  color: var(--text);
+  color: var(--gray-900);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.manage-item-count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--gray-400);
+}
 
-/* ══════════════════════════════════════════
-   IMPORT PREVIEW
-══════════════════════════════════════════ */
+/* ═══════════════════════════════════════════
+   IMPORT PREVIEW BLOCK
+═══════════════════════════════════════════ */
 .import-preview {
-  background: var(--surface2);
-  border: 1px solid var(--border2);
-  border-radius: var(--radius);
+  background: var(--gray-25);
+  border: 1px solid var(--gray-100);
+  border-radius: var(--radius-sm);
   padding: 14px 16px;
   font-family: var(--font-mono);
   font-size: 12px;
-  color: var(--text2);
+  color: var(--gray-600);
   margin-top: 14px;
-  line-height: 1.9;
+  line-height: 2;
+}
+.import-preview strong { color: var(--gray-900); }
+
+/* ═══════════════════════════════════════════
+   SECTION DIVIDER
+═══════════════════════════════════════════ */
+.section-divider {
+  height: 1px;
+  background: var(--gray-100);
+  margin: 20px 0;
 }
 
-/* ══════════════════════════════════════════
-   UTILITIES
-══════════════════════════════════════════ */
-.hidden { display: none !important; }
+/* ═══════════════════════════════════════════
+   DATE PICKER CARD — Home
+═══════════════════════════════════════════ */
+.date-picker-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.date-picker-row .form-group {
+  flex: 0 0 200px;
+}
+.date-picker-row .btn-row {
+  flex: 1;
+  align-items: flex-end;
+}
 
+/* ═══════════════════════════════════════════
+   INLINE EDIT INPUT in table
+═══════════════════════════════════════════ */
+.inline-edit {
+  background: var(--white);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  outline: none;
+  width: 100%;
+  box-shadow: 0 0 0 3px rgba(26,86,219,.1);
+}
+
+/* ═══════════════════════════════════════════
+   UTILITIES
+═══════════════════════════════════════════ */
+.hidden { display: none !important; }
+.text-mono { font-family: var(--font-mono); }
+.text-muted { color: var(--gray-400); }
+.mt-0 { margin-top: 0; }
+.mb-16 { margin-bottom: 16px; }
+
+/* Scrollbar */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 99px; }
+::-webkit-scrollbar-thumb { background: var(--gray-200); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--gray-300); }
 
-/* ══════════════════════════════════════════
-   RESPONSIVE  ≤ 640px  (phones)
-══════════════════════════════════════════ */
+/* ═══════════════════════════════════════════
+   RESPONSIVE ≤ 640px
+═══════════════════════════════════════════ */
 @media (max-width: 640px) {
-
-  /* Show hamburger, hide inline nav links */
-  .nav-hamburger { display: flex; }
+  .nav-hamburger { display: flex; align-items: center; justify-content: center; }
   .nav-links     { display: none; }
-  .nav-undo      { padding: 5px 9px; font-size: 10px; }
+  .nav-undo      { padding: 5px 10px; font-size: 10px; }
+  .topnav-logo   { padding: 0 12px; }
+  .topnav-logo-sub { display: none; }
 
-  /* Sidebar: fixed slide-in drawer from left */
   .sidebar {
     position: fixed;
     top: 0; left: 0;
     height: 100vh;
     z-index: 450;
     transform: translateX(-100%);
-    transition: transform .25s ease;
+    transition: transform .22s cubic-bezier(.4,0,.2,1);
     width: min(var(--sidebar-w), 80vw);
-    /* add space for safe area (notch) */
-    padding-top: max(16px, env(safe-area-inset-top));
-    padding-bottom: max(16px, env(safe-area-inset-bottom));
+    padding-top: max(12px, env(safe-area-inset-top));
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+    box-shadow: none;
   }
   .sidebar.drawer-open {
     transform: translateX(0);
-    box-shadow: 6px 0 40px rgba(0,0,0,.7);
+    box-shadow: var(--shadow-lg);
   }
-
-  /* Show close button and drawer nav shortcuts */
-  .sidebar-close-btn { display: block; }
+  .sidebar-close-btn { display: flex; align-items: center; justify-content: center; }
   .drawer-nav        { display: flex; }
 
-  /* Main: less padding on phone */
-  .main { padding: 14px 12px 80px; }
+  .main { padding: 16px 14px 80px; }
 
-  /* Stats: smaller number */
-  .stat-num { font-size: 20px; }
-  .stat-pill { padding: 10px 10px; }
+  .stats-grid { gap: 8px; }
+  .stat-num   { font-size: 22px; }
+  .stat-card  { padding: 12px 14px; }
 
-  /* Cards: tighter */
-  .card { padding: 14px; }
-  .page-header h2 { font-size: 20px; }
+  .card         { padding: 14px 16px; }
+  .page-header h2 { font-size: 18px; }
 
-  /* Hide desktop table; show card list */
   .table-wrap  { display: none; }
   .entry-cards { display: block; }
 
-  /* Buttons: full-width on phone */
+  .form-row { grid-template-columns: 1fr; }
+  .date-picker-row .form-group { flex: 1 1 120px; }
   .btn-row .btn { flex: 1; }
 }
 
-/* ══════════════════════════════════════════
-   RESPONSIVE  641–900px  (tablets)
-══════════════════════════════════════════ */
 @media (min-width: 641px) and (max-width: 900px) {
-  .sidebar { width: 180px; }
-  .main    { padding: 20px 20px 48px; }
-  .nav-btn { padding: 7px 10px; font-size: 12px; }
+  .sidebar { width: 190px; }
+  .main    { padding: 22px 22px 60px; }
+  .nav-btn { padding: 0 10px; font-size: 12.5px; }
 }
 </style>
 </head>
 <body>
 
-<!-- Dim overlay when mobile drawer is open -->
+<!-- Mobile overlay -->
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 
-<!-- ══ TOP NAV ══ -->
+<!-- ══ TOP NAVIGATION ══ -->
 <nav class="topnav">
-  <button class="nav-hamburger" onclick="toggleSidebar()" aria-label="Open menu">☰</button>
+  <button class="nav-hamburger" onclick="toggleSidebar()" aria-label="Open menu">
+    <svg width="18" height="14" viewBox="0 0 18 14" fill="none"><path d="M1 1h16M1 7h16M1 13h16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+  </button>
 
-  <div class="topnav-logo">
-    <div class="topnav-logo-icon"></div>
-    LTM
-  </div>
+  <a class="topnav-logo" href="#" onclick="showPage('home');return false;">
+    <div class="topnav-logo-mark">
+      <svg viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="1" y="1" width="5" height="5" rx="1" fill="white"/>
+        <rect x="8" y="1" width="5" height="5" rx="1" fill="white" opacity=".5"/>
+        <rect x="1" y="8" width="5" height="5" rx="1" fill="white" opacity=".5"/>
+        <rect x="8" y="8" width="5" height="5" rx="1" fill="white" opacity=".25"/>
+      </svg>
+    </div>
+    <div>
+      <div class="topnav-logo-text">MSA</div>
+      <div class="topnav-logo-sub">Tasks Manager</div>
+    </div>
+  </a>
 
-  <!-- Desktop nav links (hidden on mobile) -->
   <div class="nav-links">
     <button class="nav-btn active" id="nav-home"         onclick="showPage('home')">Home</button>
-    <button class="nav-btn"        id="nav-manage"       onclick="showPage('manage')">Manage</button>
+    <button class="nav-btn"        id="nav-manage"       onclick="showPage('manage')">Categories</button>
     <button class="nav-btn"        id="nav-importExport" onclick="showPage('importExport')">Import / Export</button>
   </div>
 
   <div class="nav-spacer"></div>
-  <button class="nav-undo" onclick="undoLastAction()">↩ Undo</button>
+
+  <button class="nav-undo" onclick="undoLastAction()" title="Undo last destructive action">
+    <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M2.5 2.5C3.4 1.6 4.6 1 6 1c2.76 0 5 2.24 5 5s-2.24 5-5 5-5-2.24-5-5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M1 1v3h3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    Undo
+  </button>
 </nav>
 
+<!-- ══ LAYOUT ══ -->
 <div class="layout">
 
   <!-- ══ SIDEBAR ══ -->
   <aside class="sidebar" id="sidebar">
 
-    <!-- Drawer header row (close button visible on mobile) -->
-    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; padding:0 4px;">
-      <div class="sidebar-section-label" style="margin:0;">Categories</div>
-      <button class="sidebar-close-btn" onclick="closeSidebar()" aria-label="Close">✕</button>
+    <!-- Mobile header row -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:0 4px 8px;border-bottom:1px solid var(--gray-100);margin-bottom:6px;">
+      <span style="font-size:12px;font-weight:600;color:var(--gray-700);">Navigation</span>
+      <button class="sidebar-close-btn" onclick="closeSidebar()" aria-label="Close">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </button>
     </div>
 
-    <!-- Mobile-only page nav inside drawer -->
+    <!-- Drawer-only page nav (mobile) -->
     <div class="drawer-nav" id="drawerNav">
-      <button class="sidebar-btn" onclick="showPage('home');closeSidebar()">🏠&nbsp; Home</button>
-      <button class="sidebar-btn" onclick="showPage('manage');closeSidebar()">⚙️&nbsp; Manage</button>
-      <button class="sidebar-btn" onclick="showPage('importExport');closeSidebar()">↕️&nbsp; Import / Export</button>
+      <button class="sidebar-btn" onclick="showPage('home');closeSidebar()">
+        <span class="sidebar-dot" style="background:var(--gray-400)"></span>Home
+      </button>
+      <button class="sidebar-btn" onclick="showPage('manage');closeSidebar()">
+        <span class="sidebar-dot" style="background:var(--gray-400)"></span>Categories
+      </button>
+      <button class="sidebar-btn" onclick="showPage('importExport');closeSidebar()">
+        <span class="sidebar-dot" style="background:var(--gray-400)"></span>Import / Export
+      </button>
     </div>
 
-    <!-- Category buttons (rendered by JS) -->
+    <div class="sidebar-section">Categories</div>
+    <!-- Category buttons injected by JS -->
     <div id="categoryList"></div>
+
+    <!-- Bottom shortcut -->
+    <div style="margin-top:auto;padding-top:12px;border-top:1px solid var(--gray-100);">
+      <button class="sidebar-btn" onclick="showPage('manage');closeSidebar()" style="color:var(--gray-500);font-size:12px;">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="flex-shrink:0;opacity:.6"><circle cx="6" cy="6" r="1.2" fill="currentColor"/><circle cx="10" cy="6" r="1.2" fill="currentColor"/><circle cx="2" cy="6" r="1.2" fill="currentColor"/></svg>
+        Manage categories
+      </button>
+    </div>
   </aside>
 
   <!-- ══ MAIN ══ -->
   <main class="main">
     <div id="msg"></div>
 
-    <!-- ── HOME PAGE ── -->
+    <!-- ══ HOME PAGE ══ -->
     <div id="homePage">
       <div class="page-header">
-        <h2>Daily Overview</h2>
-        <p>Select a date to see all tasks across categories</p>
+        <div class="page-header-inner">
+          <div>
+            <h2>Daily Overview</h2>
+            <p>Select a date to see all tasks across every category</p>
+          </div>
+        </div>
       </div>
 
-      <div class="card">
-        <div class="form-stack">
+      <div class="card mb-16">
+        <div class="date-picker-row">
           <div class="form-group">
             <label class="form-label">Date</label>
             <input type="date" id="homeDate">
           </div>
           <div class="btn-row">
-            <button class="btn btn-primary" onclick="loadHome()">Load Tasks</button>
-            <button class="btn btn-ghost"   onclick="exportDateCSV()">↓ Date CSV</button>
+            <button class="btn btn-primary" onclick="loadHome()">
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6.5" cy="6.5" r="5.5" stroke="white" stroke-width="1.3"/><path d="M6.5 4v2.5l1.5 1.5" stroke="white" stroke-width="1.3" stroke-linecap="round"/></svg>
+              Load Tasks
+            </button>
+            <button class="btn btn-outline" onclick="exportDateCSV()">
+              <svg width="11" height="12" viewBox="0 0 11 12" fill="none"><path d="M5.5 1v7M2.5 5.5l3 3 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M1 9.5v1a.5.5 0 00.5.5h8a.5.5 0 00.5-.5v-1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+              Date CSV
+            </button>
           </div>
         </div>
       </div>
@@ -758,88 +1094,132 @@ tbody tr:hover { background: var(--surface2); }
       <div id="homeResults"></div>
     </div>
 
-    <!-- ── CATEGORY PAGE ── -->
+    <!-- ══ CATEGORY PAGE ══ -->
     <div id="categoryPage" class="hidden">
       <div class="page-header">
-        <h2 id="categoryTitle"></h2>
-        <p>Manage entries in this category</p>
-      </div>
-
-      <div class="card">
-        <div class="card-title">Add Entry</div>
-        <div class="form-stack">
-          <div class="form-group">
-            <label class="form-label">Date</label>
-            <input type="date" id="catDate">
+        <div class="page-header-inner">
+          <div>
+            <h2 id="categoryTitle"></h2>
+            <p>Manage and track entries in this category</p>
           </div>
-          <div class="form-group">
-            <label class="form-label">Task</label>
-            <input type="text" id="catTask" placeholder="Describe the task…">
+          <div class="page-header-actions">
+            <button class="btn btn-success btn-sm" onclick="markAllDone()">✓ Mark All Done</button>
+            <button class="btn btn-outline btn-sm" onclick="exportCategoryCSV()">
+              <svg width="10" height="11" viewBox="0 0 10 11" fill="none"><path d="M5 1v6M2 4l3 3 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M1 8.5v.5a.5.5 0 00.5.5h7a.5.5 0 00.5-.5v-.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+              Export CSV
+            </button>
           </div>
-          <div class="form-group">
-            <label class="form-label">Comment</label>
-            <input type="text" id="catComment" placeholder="Optional note…">
-          </div>
-          <div class="form-inline">
-            <input type="checkbox" id="catDone">
-            <label class="form-label" for="catDone" style="cursor:pointer; font-size:12px; letter-spacing:.02em;">Mark as done</label>
-          </div>
-          <button class="btn btn-primary" onclick="addEntryUI()">+ Add Entry</button>
         </div>
       </div>
 
-      <div class="btn-row" style="margin-bottom:14px;">
-        <button class="btn btn-success btn-sm" onclick="markAllDone()">✓ Mark All Done</button>
-        <button class="btn btn-ghost   btn-sm" onclick="exportCategoryCSV()">↓ Export CSV</button>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Add Entry</div>
+        </div>
+        <div class="form-stack">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Date</label>
+              <input type="date" id="catDate">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Task</label>
+              <input type="text" id="catTask" placeholder="Describe the task…">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Comment <span class="text-muted" style="text-transform:none;font-size:10px;">(optional)</span></label>
+            <input type="text" id="catComment" placeholder="Notes, context, or reference…">
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+            <div class="form-inline">
+              <input type="checkbox" id="catDone">
+              <label class="form-label" for="catDone" style="cursor:pointer;text-transform:none;font-size:12px;letter-spacing:0;color:var(--gray-600);">Mark as done immediately</label>
+            </div>
+            <button class="btn btn-primary" onclick="addEntryUI()">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="white" stroke-width="1.6" stroke-linecap="round"/></svg>
+              Add Entry
+            </button>
+          </div>
+        </div>
       </div>
 
       <div id="categoryTable"></div>
     </div>
 
-    <!-- ── MANAGE PAGE ── -->
+    <!-- ══ MANAGE PAGE ══ -->
     <div id="managePage" class="hidden">
       <div class="page-header">
-        <h2>Manage Categories</h2>
-        <p>Add, rename, or delete your task categories</p>
-      </div>
-
-      <div class="card">
-        <div class="card-title">New Category</div>
-        <div class="form-stack">
-          <div class="form-group">
-            <label class="form-label">Name</label>
-            <input type="text" id="newCategory" placeholder="Category name…">
+        <div class="page-header-inner">
+          <div>
+            <h2>Manage Categories</h2>
+            <p>Add, rename, or delete your task categories</p>
           </div>
-          <button class="btn btn-primary" onclick="addCategoryUI()">+ Add Category</button>
         </div>
       </div>
 
       <div class="card">
-        <div class="card-title">Existing Categories</div>
-        <div id="manageList"></div>
+        <div class="card-header">
+          <div class="card-title">New Category</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+          <div class="form-group" style="flex:1;min-width:160px;">
+            <label class="form-label">Name</label>
+            <input type="text" id="newCategory" placeholder="e.g. Python, Reading, Projects…"
+              onkeydown="if(event.key==='Enter')addCategoryUI()">
+          </div>
+          <button class="btn btn-primary" onclick="addCategoryUI()" style="flex-shrink:0;">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="white" stroke-width="1.6" stroke-linecap="round"/></svg>
+            Add Category
+          </button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Existing Categories</div>
+          <span id="manageCatCount" class="badge badge-cat"></span>
+        </div>
+        <div class="manage-list" id="manageList"></div>
       </div>
     </div>
 
-    <!-- ── IMPORT / EXPORT PAGE ── -->
+    <!-- ══ IMPORT / EXPORT PAGE ══ -->
     <div id="importExportPage" class="hidden">
       <div class="page-header">
-        <h2>Import / Export</h2>
-        <p>Back up your data or restore from a previous snapshot</p>
+        <div class="page-header-inner">
+          <div>
+            <h2>Import / Export</h2>
+            <p>Back up your data or restore from a previous snapshot</p>
+          </div>
+        </div>
       </div>
 
+      <!-- Export -->
       <div class="card">
-        <div class="card-title">Export</div>
-        <div class="btn-row">
-          <button class="btn btn-primary" onclick="exportJSON()">↓ Export JSON</button>
-          <button class="btn btn-ghost"   onclick="exportAllCSV()">↓ Export All CSV</button>
+        <div class="card-header">
+          <div class="card-title">Export</div>
         </div>
-        <p style="color:var(--text3);font-size:12px;margin-top:12px;">
-          Filename: <span style="font-family:var(--font-mono);color:var(--text2);">tasks-backup-YYYYMMDD.json</span>
+        <div class="btn-row" style="margin-bottom:14px;">
+          <button class="btn btn-primary" onclick="exportJSON()">
+            <svg width="11" height="12" viewBox="0 0 11 12" fill="none"><path d="M5.5 1v7M2.5 5.5l3 3 3-3" stroke="white" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M1 9.5v1a.5.5 0 00.5.5h8a.5.5 0 00.5-.5v-1" stroke="white" stroke-width="1.4" stroke-linecap="round"/></svg>
+            Export JSON
+          </button>
+          <button class="btn btn-outline" onclick="exportAllCSV()">
+            <svg width="11" height="12" viewBox="0 0 11 12" fill="none"><path d="M5.5 1v7M2.5 5.5l3 3 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M1 9.5v1a.5.5 0 00.5.5h8a.5.5 0 00.5-.5v-1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+            Export All CSV
+          </button>
+        </div>
+        <p style="font-family:var(--font-mono);font-size:11.5px;color:var(--gray-400);">
+          Filename: tasks-backup-YYYYMMDD.json
         </p>
       </div>
 
+      <!-- Import -->
       <div class="card">
-        <div class="card-title">Import</div>
+        <div class="card-header">
+          <div class="card-title">Import</div>
+        </div>
         <div class="form-stack">
           <div class="form-group">
             <label class="form-label">JSON File</label>
@@ -848,13 +1228,27 @@ tbody tr:hover { background: var(--surface2); }
           <div class="form-group">
             <label class="form-label">Mode</label>
             <select id="importMode">
-              <option value="merge">Merge — safe, keeps existing data</option>
-              <option value="replace">Replace — overwrites everything</option>
+              <option value="merge">Merge — safe, preserves existing data</option>
+              <option value="replace">Replace — overwrites everything (destructive)</option>
             </select>
+            <div class="form-hint">Use <strong>Merge</strong> unless you want to completely reset your data.</div>
           </div>
-          <button class="btn btn-primary" onclick="handleImport()">Import</button>
+          <button class="btn btn-primary" onclick="handleImport()" style="align-self:flex-start;">
+            Import File
+          </button>
         </div>
         <div id="importPreview"></div>
+      </div>
+
+      <!-- Info block -->
+      <div style="background:var(--gray-25);border:1px solid var(--gray-100);border-radius:var(--radius);padding:16px 20px;">
+        <div style="font-size:12px;font-weight:600;color:var(--gray-600);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em;font-family:var(--font-mono);">Tips</div>
+        <ul style="font-size:12.5px;color:var(--gray-500);padding-left:16px;line-height:2;">
+          <li>Always <strong>Export JSON</strong> before using Replace mode or deleting categories.</li>
+          <li>The <strong>Merge</strong> mode uses entry IDs to avoid duplicates.</li>
+          <li>JSON exports include all categories and their entries.</li>
+          <li>CSV exports are flat files suitable for spreadsheet apps.</li>
+        </ul>
       </div>
     </div>
 
@@ -862,20 +1256,36 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <!-- ══════════════════════════════════════════
-     JAVASCRIPT — all functions unchanged from original spec
+     APPLICATION JAVASCRIPT
+     ─ CONFIG keys at top
+     ─ Functions: init, save, load, renderSidebar, showPage,
+       addEntry, editEntry, deleteEntry, toggleDone,
+       addCategory, renameCategory, deleteCategory,
+       exportJSON, importJSON, exportCSV,
+       getEntriesByDate, undoLastAction
 ══════════════════════════════════════════ -->
 <script>
-/* ─── CONFIG ─── */
+"use strict";
+
+/* ─────────────────────────────────────────
+   CONFIG
+   Change STORAGE_KEY to namespace multiple instances.
+   Delete INIT_KEY from localStorage to re-trigger sample data.
+───────────────────────────────────────── */
 const STORAGE_KEY        = "learningTasksData_v4";
 const INIT_KEY           = "learningTasksInitialized_v4";
 const DEFAULT_CATEGORIES = ["Day2Day", "TASKS", "BASH SCRIPTING"];
 
-/* ─── STATE ─── */
+/* ─────────────────────────────────────────
+   STATE
+───────────────────────────────────────── */
 let data = { categories: [], entries: [] };
-let currentCategory = null;
-let undoState = null;
+let currentCategory = null;   // which category page is open
+let undoState = null;          // JSON snapshot for 1-step undo
 
-/* ─── MOBILE DRAWER ─── */
+/* ─────────────────────────────────────────
+   MOBILE DRAWER
+───────────────────────────────────────── */
 function toggleSidebar() {
   const open = document.getElementById("sidebar").classList.toggle("drawer-open");
   document.getElementById("sidebarOverlay").classList.toggle("open", open);
@@ -886,28 +1296,78 @@ function closeSidebar() {
   document.getElementById("sidebarOverlay").classList.remove("open");
   document.body.classList.remove("drawer-open");
 }
-
-/* Show drawer-nav links only on mobile */
 function syncDrawerNav() {
   const isMobile = window.innerWidth <= 640;
   document.getElementById("drawerNav").style.display = isMobile ? "flex" : "none";
 }
 window.addEventListener("resize", syncDrawerNav);
 
-/* ─── UTILITIES ─── */
-function uid() {
-  return "id-" + Date.now() + "-" + Math.random().toString(16).slice(2);
-}
-function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
-function load() { data = JSON.parse(localStorage.getItem(STORAGE_KEY)); }
+/* ─────────────────────────────────────────
+   UTILITIES
+───────────────────────────────────────── */
 
+/** Generate a collision-resistant unique ID */
+function uid() {
+  return "id-" + Date.now() + "-" + Math.random().toString(36).slice(2, 9);
+}
+
+/** Persist data object to localStorage */
+function save() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+/** Load data object from localStorage */
+function load() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (raw) data = JSON.parse(raw);
+}
+
+/** Show a brief toast notification */
 function showMsg(text, err = false) {
   const el = document.getElementById("msg");
-  el.innerHTML = `<div class="message ${err ? "error" : ""}">${text}</div>`;
-  setTimeout(() => el.innerHTML = "", 3000);
+  el.innerHTML = `<div class="message${err ? " error" : ""}">${escHtml(text)}</div>`;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.innerHTML = ""; }, 3200);
 }
-function backup() { undoState = JSON.stringify(data); }
 
+/** Save a full-data snapshot for undo */
+function backup() {
+  undoState = JSON.stringify(data);
+}
+
+/** Escape HTML to prevent XSS in innerHTML */
+function escHtml(str) {
+  return String(str ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/** Wrap a CSV cell value safely */
+function csvField(v) {
+  const s = String(v ?? "");
+  return (s.includes(",") || s.includes('"') || s.includes("\n"))
+    ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+/** Trigger a browser file download */
+function triggerDownload(blob, filename) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+/** Return YYYYMMDD string for today */
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/* ─────────────────────────────────────────
+   UNDO
+───────────────────────────────────────── */
 function undoLastAction() {
   if (!undoState) return showMsg("Nothing to undo", true);
   data = JSON.parse(undoState);
@@ -915,130 +1375,179 @@ function undoLastAction() {
   save();
   renderSidebar();
   loadHome();
-  showMsg("Undo successful");
+  if (document.getElementById("managePage").classList.contains("hidden") === false) renderManage();
+  showMsg("Undo successful ✓");
 }
 
-/* ─── INIT ─── */
+/* ─────────────────────────────────────────
+   INITIALISATION
+   Checks for first-run flag; injects sample data if absent.
+───────────────────────────────────────── */
 function init() {
   if (!localStorage.getItem(INIT_KEY)) {
+    /* First run — seed with sample data */
     data.categories = [...DEFAULT_CATEGORIES];
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayStr();
     data.entries = [
-      { id: uid(), category: "Day2Day",        date: today, text: "Morning walk",   comment: "health",   done: false },
-      { id: uid(), category: "TASKS",          date: today, text: "Finish module",  comment: "urgent",   done: false },
-      { id: uid(), category: "BASH SCRIPTING", date: today, text: "Practice loops", comment: "for exam", done: false }
+      { id: uid(), category: "Day2Day",        date: today, text: "Morning walk — 30 mins",        comment: "health routine",    done: true  },
+      { id: uid(), category: "Day2Day",        date: today, text: "Read 20 pages of current book", comment: "",                  done: false },
+      { id: uid(), category: "TASKS",          date: today, text: "Complete module review",         comment: "urgent — deadline", done: false },
+      { id: uid(), category: "TASKS",          date: today, text: "Reply to pending emails",        comment: "",                  done: true  },
+      { id: uid(), category: "BASH SCRIPTING", date: today, text: "Practice loops and conditionals",comment: "for exam",          done: false },
     ];
     save();
-    localStorage.setItem(INIT_KEY, true);
+    localStorage.setItem(INIT_KEY, "1");
   } else {
     load();
   }
 
-  document.getElementById("homeDate").value = new Date().toISOString().slice(0, 10);
+  document.getElementById("homeDate").value = todayStr();
   syncDrawerNav();
   renderSidebar();
   showPage("home");
   loadHome();
 }
 
-/* ─── SIDEBAR ─── */
+/* ─────────────────────────────────────────
+   SIDEBAR RENDERING
+   Renders one button per category with entry count badge.
+───────────────────────────────────────── */
 function renderSidebar() {
   let html = "";
   data.categories.forEach(c => {
-    const safe   = c.replace(/\\/g,"\\\\").replace(/'/g, "\\'");
+    const safe  = escAttr(c);
+    const count = data.entries.filter(e => e.category === c).length;
     const active = c === currentCategory ? "active" : "";
-    html += `<button class="sidebar-btn ${active}" onclick="openCategory('${safe}');closeSidebar()">${escHtml(c)}</button>`;
+    html += `
+      <button class="sidebar-btn ${active}" onclick="openCategory('${safe}');closeSidebar()">
+        <span class="sidebar-dot"></span>
+        <span style="flex:1;overflow:hidden;text-overflow:ellipsis">${escHtml(c)}</span>
+        <span class="sidebar-count">${count}</span>
+      </button>`;
   });
-  document.getElementById("categoryList").innerHTML = html;
+  document.getElementById("categoryList").innerHTML = html || `<div style="padding:8px 10px;font-size:12px;color:var(--gray-400)">No categories yet.</div>`;
 }
 
-/* ─── NAVIGATION ─── */
+/** Escape a string for use in an HTML attribute (single-quoted) */
+function escAttr(str) {
+  return String(str ?? "").replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+}
+
+/* ─────────────────────────────────────────
+   PAGE NAVIGATION
+───────────────────────────────────────── */
 function showPage(p) {
-  ["homePage","categoryPage","managePage","importExportPage"].forEach(id =>
-    document.getElementById(id).classList.add("hidden")
-  );
+  // Hide all pages
+  ["homePage", "categoryPage", "managePage", "importExportPage"]
+    .forEach(id => document.getElementById(id).classList.add("hidden"));
+
+  // Remove active state from all nav buttons
   document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
 
+  // Show requested page
   document.getElementById(p + "Page").classList.remove("hidden");
 
-  const map = { home: "nav-home", manage: "nav-manage", importExport: "nav-importExport" };
-  if (map[p]) document.getElementById(map[p]).classList.add("active");
+  // Activate matching nav button
+  const navMap = { home: "nav-home", manage: "nav-manage", importExport: "nav-importExport" };
+  if (navMap[p]) document.getElementById(navMap[p]).classList.add("active");
 
+  // Trigger page-specific rendering
   if (p === "manage") renderManage();
 }
 
-/* ─── HOME ─── */
+/* ─────────────────────────────────────────
+   HOME PAGE
+───────────────────────────────────────── */
+
+/** Return all entries matching a given date string (YYYY-MM-DD) */
 function getEntriesByDate(date) {
   return data.entries.filter(e => e.date === date);
 }
 
+/** Render the Home page results for the selected date */
 function loadHome() {
   const date  = document.getElementById("homeDate").value;
+  if (!date) return;
   const rows  = getEntriesByDate(date);
   const total = rows.length;
   const done  = rows.filter(r => r.done).length;
+  const pct   = total > 0 ? Math.round((done / total) * 100) : 0;
 
-  /* Stats strip */
   let html = `
-    <div class="stats-row">
-      <div class="stat-pill">
+    <div class="stats-grid">
+      <div class="stat-card">
         <div class="stat-num">${total}</div>
-        <div class="stat-lbl">Tasks</div>
+        <div class="stat-label">Total Tasks</div>
+        <div class="stat-bar"><div class="stat-bar-fill" style="width:100%;background:var(--gray-200)"></div></div>
       </div>
-      <div class="stat-pill">
-        <div class="stat-num" style="color:var(--accent3)">${done}</div>
-        <div class="stat-lbl">Done</div>
+      <div class="stat-card">
+        <div class="stat-num success">${done}</div>
+        <div class="stat-label">Done</div>
+        <div class="stat-bar"><div class="stat-bar-fill" style="width:${pct}%;background:var(--success)"></div></div>
       </div>
-      <div class="stat-pill">
-        <div class="stat-num" style="color:var(--warn)">${total - done}</div>
-        <div class="stat-lbl">Pending</div>
+      <div class="stat-card">
+        <div class="stat-num warn">${total - done}</div>
+        <div class="stat-label">Pending</div>
+        <div class="stat-bar"><div class="stat-bar-fill" style="width:${total>0?Math.round(((total-done)/total)*100):0}%;background:var(--warn)"></div></div>
       </div>
     </div>`;
 
   if (!rows.length) {
-    html += `<div class="card"><div class="empty">
-      <div class="empty-icon">📭</div>
-      <div class="empty-text">No tasks found for <strong>${date}</strong></div>
-    </div></div>`;
+    html += `<div class="card">
+      <div class="empty">
+        <span class="empty-icon">📭</span>
+        <div class="empty-title">No tasks for ${date}</div>
+        <div class="empty-sub">Select a different date or add entries via a category.</div>
+      </div>
+    </div>`;
   } else {
-    /* ── Desktop table ── */
+    /* Desktop table */
     html += `<div class="table-wrap"><table>
       <thead><tr>
-        <th>Category</th><th>Date</th><th>Task</th><th>Comment</th><th>Done</th><th>Actions</th>
-      </tr></thead><tbody>`;
+        <th>Category</th>
+        <th>Date</th>
+        <th>Task</th>
+        <th>Comment</th>
+        <th style="text-align:center">Done</th>
+        <th>Actions</th>
+      </tr></thead>
+      <tbody>`;
+
     rows.forEach(e => {
       html += `<tr>
         <td><span class="badge badge-cat">${escHtml(e.category)}</span></td>
-        <td style="font-family:var(--font-mono);font-size:12px;color:var(--text3)">${e.date}</td>
-        <td style="color:var(--text)">${escHtml(e.text)}</td>
-        <td style="color:var(--text3);font-size:12px">${escHtml(e.comment||"")}</td>
-        <td>
-          <input type="checkbox" ${e.done?"checked":""} onchange="toggleDone('${e.id}');loadHome()">
-          <span class="badge ${e.done?'badge-done':'badge-todo'}" style="margin-left:6px">${e.done?"Done":"Todo"}</span>
+        <td class="td-date">${e.date}</td>
+        <td class="td-task">${escHtml(e.text)}</td>
+        <td class="td-comment">${escHtml(e.comment || "—")}</td>
+        <td style="text-align:center">
+          <input type="checkbox" ${e.done ? "checked" : ""} onchange="toggleDone('${e.id}');loadHome()">
         </td>
-        <td style="white-space:nowrap">
-          <button class="btn btn-ghost btn-sm"  onclick="editEntry('${e.id}')">Edit</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteEntry('${e.id}')">Delete</button>
+        <td>
+          <div class="action-btns">
+            <button class="btn btn-ghost btn-sm"  onclick="editEntry('${e.id}')">Edit</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteEntry('${e.id}')">Delete</button>
+          </div>
         </td>
       </tr>`;
     });
     html += `</tbody></table></div>`;
 
-    /* ── Mobile card list ── */
+    /* Mobile card list */
     html += `<div class="entry-cards">`;
     rows.forEach(e => {
       html += `<div class="entry-card">
         <div class="entry-card-top">
-          <input type="checkbox" ${e.done?"checked":""} onchange="toggleDone('${e.id}');loadHome()">
+          <input type="checkbox" ${e.done ? "checked" : ""} onchange="toggleDone('${e.id}');loadHome()" style="margin-top:2px">
           <div class="entry-card-text">${escHtml(e.text)}</div>
-          <span class="badge ${e.done?'badge-done':'badge-todo'}">${e.done?"Done":"Todo"}</span>
         </div>
         <div class="entry-card-meta">
           <span class="badge badge-cat">${escHtml(e.category)}</span>
-          &nbsp;${e.date}${e.comment?` · ${escHtml(e.comment)}`:""}
+          <span class="badge badge-date">${e.date}</span>
+          <span class="badge ${e.done ? "badge-done" : "badge-todo"}">${e.done ? "Done" : "Pending"}</span>
         </div>
+        ${e.comment ? `<div style="font-size:12px;color:var(--gray-400);font-style:italic;margin-bottom:8px;">${escHtml(e.comment)}</div>` : ""}
         <div class="entry-card-actions">
-          <button class="btn btn-ghost btn-sm"  onclick="editEntry('${e.id}')">Edit</button>
+          <button class="btn btn-outline btn-sm" onclick="editEntry('${e.id}')">Edit</button>
           <button class="btn btn-danger btn-sm" onclick="deleteEntry('${e.id}')">Delete</button>
         </div>
       </div>`;
@@ -1049,43 +1558,59 @@ function loadHome() {
   document.getElementById("homeResults").innerHTML = html;
 }
 
-/* ─── CATEGORY PAGE ─── */
+/* ─────────────────────────────────────────
+   CATEGORY PAGE
+───────────────────────────────────────── */
+
+/** Open a category detail page */
 function openCategory(c) {
   currentCategory = c;
   renderSidebar();
   showPage("category");
-  document.getElementById("categoryTitle").innerText = c;
+  document.getElementById("categoryTitle").textContent = c;
+  // Pre-fill date to today
+  if (!document.getElementById("catDate").value) {
+    document.getElementById("catDate").value = todayStr();
+  }
   renderCategory();
 }
 
+/** Render the category entry table / card list */
 function renderCategory() {
   const rows = data.entries.filter(e => e.category === currentCategory);
+  const container = document.getElementById("categoryTable");
 
   if (!rows.length) {
-    document.getElementById("categoryTable").innerHTML = `
-      <div class="card"><div class="empty">
-        <div class="empty-icon">📂</div>
-        <div class="empty-text">No entries yet. Use the form above to add one.</div>
-      </div></div>`;
+    container.innerHTML = `<div class="card">
+      <div class="empty">
+        <span class="empty-icon">📂</span>
+        <div class="empty-title">No entries yet</div>
+        <div class="empty-sub">Use the form above to add your first entry.</div>
+      </div>
+    </div>`;
     return;
   }
 
   /* Desktop table */
   let html = `<div class="table-wrap"><table>
-    <thead><tr><th>Date</th><th>Task</th><th>Comment</th><th>Done</th><th>Actions</th></tr></thead>
-    <tbody>`;
+    <thead><tr>
+      <th>Date</th><th>Task</th><th>Comment</th>
+      <th style="text-align:center">Done</th><th>Actions</th>
+    </tr></thead><tbody>`;
+
   rows.forEach(e => {
     html += `<tr>
-      <td style="font-family:var(--font-mono);font-size:12px;color:var(--text3)">${e.date}</td>
-      <td style="color:var(--text)">${escHtml(e.text)}</td>
-      <td style="color:var(--text3);font-size:12px">${escHtml(e.comment||"")}</td>
-      <td>
-        <input type="checkbox" ${e.done?"checked":""} onchange="toggleDone('${e.id}');renderCategory()">
-        <span class="badge ${e.done?'badge-done':'badge-todo'}" style="margin-left:6px">${e.done?"Done":"Todo"}</span>
+      <td class="td-date">${e.date}</td>
+      <td class="td-task">${escHtml(e.text)}</td>
+      <td class="td-comment">${escHtml(e.comment || "—")}</td>
+      <td style="text-align:center">
+        <input type="checkbox" ${e.done ? "checked" : ""} onchange="toggleDone('${e.id}');renderCategory()">
       </td>
-      <td style="white-space:nowrap">
-        <button class="btn btn-ghost btn-sm"  onclick="editEntry('${e.id}')">Edit</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteEntry('${e.id}')">Delete</button>
+      <td>
+        <div class="action-btns">
+          <button class="btn btn-ghost btn-sm"  onclick="editEntry('${e.id}')">Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteEntry('${e.id}')">Delete</button>
+        </div>
       </td>
     </tr>`;
   });
@@ -1096,157 +1621,267 @@ function renderCategory() {
   rows.forEach(e => {
     html += `<div class="entry-card">
       <div class="entry-card-top">
-        <input type="checkbox" ${e.done?"checked":""} onchange="toggleDone('${e.id}');renderCategory()">
+        <input type="checkbox" ${e.done ? "checked" : ""} onchange="toggleDone('${e.id}');renderCategory()" style="margin-top:2px">
         <div class="entry-card-text">${escHtml(e.text)}</div>
-        <span class="badge ${e.done?'badge-done':'badge-todo'}">${e.done?"Done":"Todo"}</span>
+        <span class="badge ${e.done ? "badge-done" : "badge-todo"}">${e.done ? "Done" : "Pending"}</span>
       </div>
       <div class="entry-card-meta">
-        ${e.date}${e.comment?` · ${escHtml(e.comment)}`:""}
+        <span class="badge badge-date">${e.date}</span>
       </div>
+      ${e.comment ? `<div style="font-size:12px;color:var(--gray-400);font-style:italic;margin-bottom:8px;">${escHtml(e.comment)}</div>` : ""}
       <div class="entry-card-actions">
-        <button class="btn btn-ghost btn-sm"  onclick="editEntry('${e.id}')">Edit</button>
+        <button class="btn btn-outline btn-sm" onclick="editEntry('${e.id}')">Edit</button>
         <button class="btn btn-danger btn-sm" onclick="deleteEntry('${e.id}')">Delete</button>
       </div>
     </div>`;
   });
   html += `</div>`;
 
-  document.getElementById("categoryTable").innerHTML = html;
+  container.innerHTML = html;
 }
 
+/** Validate and add a new entry from the category form */
 function addEntryUI() {
   const d    = document.getElementById("catDate").value;
   const t    = document.getElementById("catTask").value.trim();
   const c    = document.getElementById("catComment").value.trim();
   const done = document.getElementById("catDone").checked;
-  if (!d || !t) return showMsg("Please fill in Date and Task", true);
+
+  if (!d)  return showMsg("Please select a date", true);
+  if (!t)  return showMsg("Task text cannot be empty", true);
+
   addEntry(currentCategory, d, t, c, done);
   document.getElementById("catTask").value    = "";
   document.getElementById("catComment").value = "";
   document.getElementById("catDone").checked  = false;
+  document.getElementById("catTask").focus();
 }
 
+/**
+ * addEntry — create and persist a new entry
+ * @param {string} category
+ * @param {string} date     YYYY-MM-DD
+ * @param {string} text     task description
+ * @param {string} comment  optional note
+ * @param {boolean} done
+ */
 function addEntry(category, date, text, comment, done) {
-  data.entries.push({ id: uid(), category, date, text, comment: comment || "", done: !!done });
+  data.entries.push({
+    id: uid(),
+    category,
+    date,
+    text,
+    comment: comment || "",
+    done: !!done
+  });
   save();
+  renderSidebar();
   renderCategory();
-  showMsg("Entry added");
+  showMsg("Entry added ✓");
 }
 
-/* ─── ENTRY OPERATIONS ─── */
+/* ─────────────────────────────────────────
+   ENTRY OPERATIONS
+───────────────────────────────────────── */
+
+/** Toggle done flag for a single entry */
 function toggleDone(id) {
   const e = data.entries.find(x => x.id === id);
-  if (e) e.done = !e.done;
-  save();
+  if (e) { e.done = !e.done; save(); }
 }
 
+/** Delete a single entry with confirmation */
 function deleteEntry(id) {
-  if (!confirm("Delete this entry?")) return;
+  if (!confirm("Delete this entry? This action can be undone.")) return;
   backup();
   data.entries = data.entries.filter(e => e.id !== id);
   save();
+  renderSidebar();
   renderCategory();
   loadHome();
   showMsg("Entry deleted — Undo available");
 }
 
+/**
+ * editEntry — prompt-based inline edit (upgradeable to a modal)
+ * Updates text and comment; all other fields unchanged.
+ */
 function editEntry(id) {
   const e = data.entries.find(x => x.id === id);
   if (!e) return;
-  const t = prompt("Edit task text:", e.text);
-  if (t === null) return;
-  const c = prompt("Edit comment:", e.comment || "");
-  e.text    = t.trim() || e.text;
-  e.comment = c !== null ? c : e.comment;
+
+  const newText = prompt("Edit task:", e.text);
+  if (newText === null) return; // cancelled
+  const newComment = prompt("Edit comment (leave blank to clear):", e.comment || "");
+
+  if (!newText.trim()) return showMsg("Task text cannot be empty", true);
+
+  e.text    = newText.trim();
+  e.comment = newComment !== null ? newComment.trim() : e.comment;
   save();
   renderCategory();
   loadHome();
-  showMsg("Entry updated");
+  showMsg("Entry updated ✓");
 }
 
-/* ─── CATEGORY MANAGEMENT ─── */
+/* ─────────────────────────────────────────
+   CATEGORY MANAGEMENT
+───────────────────────────────────────── */
+
 function addCategoryUI() {
   const name = document.getElementById("newCategory").value.trim();
   addCategory(name);
   document.getElementById("newCategory").value = "";
 }
 
+/**
+ * addCategory — add a new category
+ * Rejects empty names and duplicates (case-sensitive).
+ */
 function addCategory(name) {
-  if (!name || data.categories.includes(name)) return showMsg("Invalid or duplicate category", true);
+  if (!name) return showMsg("Category name cannot be empty", true);
+  if (data.categories.includes(name)) return showMsg("A category with that name already exists", true);
   data.categories.push(name);
   save();
   renderSidebar();
   renderManage();
-  showMsg(`Category "${name}" added`);
+  showMsg(`Category "${name}" added ✓`);
 }
 
+/** Render the Manage Categories page */
 function renderManage() {
+  const count = data.categories.length;
+  const badge = document.getElementById("manageCatCount");
+  if (badge) badge.textContent = `${count} ${count === 1 ? "category" : "categories"}`;
+
   if (!data.categories.length) {
-    document.getElementById("manageList").innerHTML = `<p style="color:var(--text3)">No categories yet.</p>`;
+    document.getElementById("manageList").innerHTML =
+      `<p style="color:var(--gray-400);font-size:13px;padding:8px 0;">No categories yet. Create one above.</p>`;
     return;
   }
+
   let html = "";
-  data.categories.forEach(c => {
-    const safe = c.replace(/\\/g,"\\\\").replace(/'/g, "\\'");
+  data.categories.forEach((c, i) => {
+    const safe  = escAttr(c);
+    const count = data.entries.filter(e => e.category === c).length;
     html += `<div class="manage-item">
+      <div class="manage-item-icon">${i + 1}</div>
       <div class="manage-item-name">${escHtml(c)}</div>
-      <button class="btn btn-ghost btn-sm"  onclick="renameCategory('${safe}')">Rename</button>
-      <button class="btn btn-danger btn-sm" onclick="deleteCategory('${safe}')">Delete</button>
+      <span class="manage-item-count">${count} ${count === 1 ? "entry" : "entries"}</span>
+      <div class="btn-row" style="gap:6px;flex-wrap:nowrap;">
+        <button class="btn btn-outline btn-sm" onclick="renameCategory('${safe}')">Rename</button>
+        <button class="btn btn-danger btn-sm"  onclick="deleteCategory('${safe}')">Delete</button>
+      </div>
     </div>`;
   });
   document.getElementById("manageList").innerHTML = html;
 }
 
+/**
+ * renameCategory — rename a category
+ * Updates all entries in that category atomically.
+ */
 function renameCategory(oldName) {
-  const n = prompt("New name for category:", oldName);
-  if (!n || n === oldName) return;
-  if (data.categories.includes(n)) return showMsg("A category with that name already exists", true);
-  data.entries.forEach(e => { if (e.category === oldName) e.category = n; });
-  data.categories = data.categories.map(c => c === oldName ? n : c);
-  if (currentCategory === oldName) currentCategory = n;
+  const newName = prompt(`Rename "${oldName}" to:`, oldName);
+  if (!newName || newName === oldName) return;
+  if (data.categories.includes(newName)) return showMsg("That name is already taken", true);
+
+  // Update all entries referencing old name
+  data.entries.forEach(e => { if (e.category === oldName) e.category = newName; });
+  data.categories = data.categories.map(c => c === oldName ? newName : c);
+
+  // If we were viewing this category, update current
+  if (currentCategory === oldName) {
+    currentCategory = newName;
+    document.getElementById("categoryTitle").textContent = newName;
+  }
+
   save();
   renderSidebar();
   renderManage();
-  showMsg(`Renamed to "${n}"`);
+  showMsg(`Renamed to "${newName}" ✓`);
 }
 
+/**
+ * deleteCategory — remove a category and all its entries.
+ * Backs up state for undo. Warns user of entry count.
+ */
 function deleteCategory(name) {
   const count = data.entries.filter(e => e.category === name).length;
-  if (!confirm(`Delete category "${name}" and its ${count} entries?\n\nTip: Export JSON first.`)) return;
-  backup();
+  const msg   = `Delete category "${name}" and its ${count} ${count === 1 ? "entry" : "entries"}?\n\n` +
+                `This cannot be reversed except via Undo (in-memory only).\n` +
+                `Tip: Export JSON before deleting to keep a permanent backup.`;
+  if (!confirm(msg)) return;
+
+  backup(); // save state so undo can restore
   data.entries    = data.entries.filter(e => e.category !== name);
   data.categories = data.categories.filter(c => c !== name);
-  if (currentCategory === name) currentCategory = null;
+
+  // If we were on this category's page, go home
+  if (currentCategory === name) {
+    currentCategory = null;
+    showPage("manage");
+  }
+
   save();
   renderSidebar();
   renderManage();
-  showMsg(`Category "${name}" deleted — Undo available`);
+  showMsg(`"${name}" deleted — Undo available`);
 }
 
-/* ─── EXPORT ─── */
+/* ─────────────────────────────────────────
+   EXPORT FUNCTIONS
+───────────────────────────────────────── */
+
+/** exportJSON — downloads full data as a JSON backup file */
 function exportJSON() {
-  const date = new Date().toISOString().slice(0,10).replace(/-/g,"");
-  triggerDownload(new Blob([JSON.stringify(data, null, 2)], { type:"application/json" }), `tasks-backup-${date}.json`);
-  showMsg("JSON exported");
+  const dateStamp = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  triggerDownload(
+    new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }),
+    `tasks-backup-${dateStamp}.json`
+  );
+  showMsg("JSON backup exported ✓");
 }
 
+/**
+ * exportCSV — download an array of entry rows as CSV
+ * @param {Array}  rows     array of entry objects
+ * @param {string} filename target filename
+ */
 function exportCSV(rows, filename) {
   let csv = "Category,Date,Task,Comment,Done\n";
   rows.forEach(r => {
-    csv += `${csvField(r.category)},${r.date},${csvField(r.text)},${csvField(r.comment||"")},${r.done}\n`;
+    csv += `${csvField(r.category)},${r.date},${csvField(r.text)},${csvField(r.comment || "")},${r.done}\n`;
   });
-  triggerDownload(new Blob([csv], { type:"text/csv" }), filename);
+  triggerDownload(new Blob([csv], { type: "text/csv;charset=utf-8;" }), filename);
   showMsg(`Exported: ${filename}`);
 }
 
-function exportAllCSV()      { exportCSV(data.entries, "tasks-all.csv"); }
-function exportCategoryCSV() { exportCSV(data.entries.filter(e => e.category === currentCategory), `${currentCategory}.csv`); }
+function exportAllCSV() {
+  exportCSV(data.entries, "tasks-all.csv");
+}
+
+function exportCategoryCSV() {
+  const rows = data.entries.filter(e => e.category === currentCategory);
+  exportCSV(rows, `tasks-${currentCategory.replace(/\s+/g, "_")}.csv`);
+}
+
 function exportDateCSV() {
   const d = document.getElementById("homeDate").value;
+  if (!d) return showMsg("Select a date first", true);
   exportCSV(getEntriesByDate(d), `tasks-date-${d}.csv`);
 }
 
-/* ─── IMPORT ─── */
+/* ─────────────────────────────────────────
+   IMPORT
+───────────────────────────────────────── */
+
+/**
+ * handleImport — reads selected JSON file, previews it, then confirms
+ * Supports two modes:
+ *   replace — overwrites all data
+ *   merge   — union of categories, entries merged by ID (no duplicates)
+ */
 function handleImport() {
   const file = document.getElementById("importFile").files[0];
   const mode = document.getElementById("importMode").value;
@@ -1256,59 +1891,66 @@ function handleImport() {
   reader.onload = ev => {
     let imp;
     try { imp = JSON.parse(ev.target.result); }
-    catch { return showMsg("Invalid JSON file", true); }
+    catch { return showMsg("Invalid or malformed JSON file", true); }
 
+    if (!Array.isArray(imp.categories) || !Array.isArray(imp.entries)) {
+      return showMsg("JSON structure invalid — expected { categories, entries }", true);
+    }
+
+    // Show preview before confirming
     document.getElementById("importPreview").innerHTML = `
       <div class="import-preview">
-        <strong>Preview</strong><br>
-        Categories : ${imp.categories?.length ?? 0}<br>
-        Entries    : ${imp.entries?.length ?? 0}<br>
-        Mode       : ${mode}
+        <strong>Import Preview</strong><br>
+        Categories : ${imp.categories.length}<br>
+        Entries    : ${imp.entries.length}<br>
+        Mode       : ${mode}<br>
+        ${mode === "replace" ? "<span style='color:var(--danger)'>⚠ This will overwrite all current data.</span>" : ""}
       </div>`;
 
-    if (!confirm(`Import ${imp.entries?.length ?? 0} entries (${mode} mode)?`)) return;
+    if (!confirm(`Import ${imp.entries.length} entries using ${mode.toUpperCase()} mode?`)) return;
 
-    backup();
+    backup(); // allow undo after import
+
     if (mode === "replace") {
+      /* Full overwrite */
       data = imp;
     } else {
-      (imp.categories || []).forEach(c => { if (!data.categories.includes(c)) data.categories.push(c); });
-      (imp.entries    || []).forEach(ne => { if (!data.entries.find(e => e.id === ne.id)) data.entries.push(ne); });
+      /* Merge: add new categories, add entries not already present by ID */
+      (imp.categories || []).forEach(c => {
+        if (!data.categories.includes(c)) data.categories.push(c);
+      });
+      (imp.entries || []).forEach(ne => {
+        if (!data.entries.find(e => e.id === ne.id)) data.entries.push(ne);
+      });
     }
+
     save();
     renderSidebar();
-    showMsg("Import complete");
+    showMsg(`Import complete (${mode} mode) ✓`);
   };
+
+  reader.onerror = () => showMsg("Failed to read file", true);
   reader.readAsText(file);
 }
 
-/* ─── BULK ─── */
+/* ─────────────────────────────────────────
+   BULK OPERATIONS
+───────────────────────────────────────── */
+
+/** Mark all entries in the current category as done */
 function markAllDone() {
-  data.entries.forEach(e => { if (e.category === currentCategory) e.done = true; });
+  let changed = 0;
+  data.entries.forEach(e => {
+    if (e.category === currentCategory && !e.done) { e.done = true; changed++; }
+  });
   save();
   renderCategory();
-  showMsg("All marked done");
+  showMsg(changed > 0 ? `${changed} ${changed === 1 ? "entry" : "entries"} marked done ✓` : "All entries already done");
 }
 
-/* ─── HELPERS ─── */
-function escHtml(str) {
-  return String(str)
-    .replace(/&/g,"&amp;").replace(/</g,"&lt;")
-    .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
-}
-function csvField(v) {
-  const s = String(v);
-  return (s.includes(",") || s.includes('"') || s.includes("\n")) ? `"${s.replace(/"/g,'""')}"` : s;
-}
-function triggerDownload(blob, filename) {
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
-
-/* ── START ── */
+/* ─────────────────────────────────────────
+   START
+───────────────────────────────────────── */
 init();
 </script>
 </body>
