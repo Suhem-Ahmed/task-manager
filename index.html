@@ -1,233 +1,208 @@
 <!DOCTYPE html>
-<!--
-README
-
-HOW TO USE
-==========
-1. Open:
-   - Save this file as index.html
-   - Double-click or open in any modern browser
-
-2. Home:
-   - Pick a date → shows all tasks across categories
-   - Export that date as CSV
-
-3. Categories:
-   - Select category from dropdown
-   - Add, edit, delete tasks
-   - Bulk: mark all done, export CSV
-
-4. Manage Categories:
-   - Add new category
-   - Rename category (updates all entries safely)
-   - Delete category (option to export before delete)
-
-5. Import/Export:
-   - Export JSON backup (recommended before major changes)
-   - Import JSON:
-        - Replace → overwrite all data
-        - Merge → combines without duplicates (uses IDs)
-
-6. Undo:
-   - Undo last delete action (1-step only)
-
-DATA MODEL
-==========
-Entry:
-{
-  id: string,
-  category: string,
-  date: "YYYY-MM-DD",
-  text: string,
-  done: boolean
-}
-
-STORAGE KEYS
-============
-localStorage keys:
-- learningTasksData
-- learningTasksInitialized
-
-DEFAULT CATEGORIES
-==================
-Day2Day, TASKS, BASH SCRIPTING
-(Change in DEFAULT_CATEGORIES in JS)
-
-NOTES
-=====
-- No backend required
-- Fully local
-- JSON export is your backup
--->
-
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>Learning Tasks Manager</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-body { font-family: Arial, sans-serif; margin: 0; }
-nav { background:#333; color:white; padding:10px; }
-nav a { color:white; margin-right:15px; cursor:pointer; }
-.container { padding:15px; }
-.hidden { display:none; }
-table { width:100%; border-collapse:collapse; margin-top:10px; }
-th, td { border:1px solid #ccc; padding:6px; }
-button { margin:3px; }
-input, select { margin:5px 0; padding:5px; }
-.alert { background:#eee; padding:8px; margin:10px 0; }
+body { font-family: Arial; margin:0; background:#f5f7fa; }
+
+nav {
+  background:#222;
+  color:white;
+  padding:10px;
+}
+nav a {
+  color:white;
+  margin-right:15px;
+  cursor:pointer;
+  font-weight:bold;
+}
+
+.container { padding:20px; }
+
+.card {
+  background:white;
+  padding:15px;
+  border-radius:8px;
+  margin-bottom:15px;
+}
+
+table {
+  width:100%;
+  border-collapse:collapse;
+}
+th, td {
+  border:1px solid #ddd;
+  padding:8px;
+}
+th { background:#eee; }
+
+button {
+  padding:5px 10px;
+  margin:2px;
+  background:#333;
+  color:white;
+  border:none;
+  cursor:pointer;
+}
+button:hover { background:#555; }
+
+input { padding:5px; margin:5px; }
+
+.hidden { display:none !important; }
+
+/* MODAL FIX */
+.modal {
+  position:fixed;
+  top:0; left:0;
+  width:100%; height:100%;
+  background:rgba(0,0,0,0.5);
+  display:none;
+  justify-content:center;
+  align-items:center;
+}
+.modal.show { display:flex; }
+
+.modal-content {
+  background:white;
+  padding:20px;
+  border-radius:8px;
+  width:300px;
+}
 </style>
 </head>
 
 <body>
 
 <nav>
-  <a onclick="showPage('home')">Home</a>
-  <span id="categoryNav"></span>
-  <a onclick="showPage('importExport')">Import/Export</a>
+<a onclick="showPage('home')">Home</a>
+<span id="categoryNav"></span>
+<a onclick="showPage('manage')">Manage</a>
+<a onclick="showPage('importExport')">Import/Export</a>
 </nav>
 
 <div class="container">
 
 <!-- HOME -->
-<div id="homePage">
+<div id="homePage" class="card">
 <h2>Home</h2>
 <input type="date" id="homeDate">
 <button onclick="loadHome()">Load</button>
-<button onclick="exportDateCSV()">Export Date CSV</button>
 <div id="homeResults"></div>
 </div>
 
 <!-- CATEGORY -->
-<div id="categoryPage" class="hidden">
+<div id="categoryPage" class="hidden card">
 <h2 id="categoryTitle"></h2>
 
 <input type="date" id="catDate">
 <input type="text" id="catTask" placeholder="Task">
+<input type="text" id="catComment" placeholder="Comment">
 <label><input type="checkbox" id="catDone"> Done</label>
-<button onclick="addEntryUI()">Add Entry</button>
 
-<button onclick="markAllDone()">Mark All Done</button>
-<button onclick="exportCategoryCSV()">Export CSV</button>
+<button onclick="addEntryUI()">Add</button>
 
 <div id="categoryTable"></div>
 </div>
 
 <!-- MANAGE -->
-<div id="managePage" class="hidden">
+<div id="managePage" class="hidden card">
 <h2>Manage Categories</h2>
-
 <input type="text" id="newCategory" placeholder="New category">
 <button onclick="addCategoryUI()">Add</button>
-
 <div id="manageList"></div>
 </div>
 
 <!-- IMPORT EXPORT -->
-<div id="importExportPage" class="hidden">
+<div id="importExportPage" class="hidden card">
 <h2>Import / Export</h2>
-
 <button onclick="exportJSON()">Export JSON</button>
 <br><br>
-
 <input type="file" id="importFile">
 <select id="importMode">
 <option value="merge">Merge</option>
 <option value="replace">Replace</option>
 </select>
 <button onclick="handleImport()">Import</button>
-
-<div id="importPreview"></div>
 </div>
 
-<!-- UNDO -->
-<div id="undoBar" class="alert hidden">
-Last action undone.
-<button onclick="undoLastAction()">Undo</button>
 </div>
 
+<!-- MODAL -->
+<div id="editModal" class="modal">
+  <div class="modal-content">
+    <h3>Edit Entry</h3>
+    <input type="date" id="editDate"><br>
+    <input type="text" id="editTask"><br>
+    <input type="text" id="editComment"><br>
+    <label><input type="checkbox" id="editDone"> Done</label><br><br>
+    <button onclick="saveEdit()">Save</button>
+    <button onclick="closeModal()">Cancel</button>
+  </div>
 </div>
 
 <script>
-/* =========================
-   CONFIGURATION
-========================= */
 const STORAGE_KEY = "learningTasksData";
 const INIT_KEY = "learningTasksInitialized";
-
 const DEFAULT_CATEGORIES = ["Day2Day","TASKS","BASH SCRIPTING"];
 
-/* =========================
-   STATE
-========================= */
 let data = { categories: [], entries: [] };
 let currentCategory = null;
-let undoBackup = null;
+let editId = null;
 
-/* =========================
-   UTIL
-========================= */
-function save() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-}
+/* DOM */
+const editModal = document.getElementById("editModal");
+const editDate = document.getElementById("editDate");
+const editTask = document.getElementById("editTask");
+const editComment = document.getElementById("editComment");
+const editDone = document.getElementById("editDone");
 
-function load() {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (raw) data = JSON.parse(raw);
-}
-
-function uid() {
-  return "id-" + Date.now() + "-" + Math.random().toString(16).slice(2);
-}
-
-function normalizeDate(d) {
-  return d;
-}
-
-/* =========================
-   INIT
-========================= */
+/* INIT */
 function init() {
   if (!localStorage.getItem(INIT_KEY)) {
     data.categories = [...DEFAULT_CATEGORIES];
-
     data.entries = [
-      {id:uid(),category:"Day2Day",date:"2026-03-29",text:"Walk",done:false},
-      {id:uid(),category:"TASKS",date:"2026-03-29",text:"Finish project",done:false},
-      {id:uid(),category:"BASH SCRIPTING",date:"2026-03-29",text:"Learn loops",done:false},
+      {id:uid(),category:"Day2Day",date:"2026-03-29",text:"Walk",comment:"Morning",done:false},
+      {id:uid(),category:"TASKS",date:"2026-03-29",text:"Project",comment:"Finish module",done:false},
+      {id:uid(),category:"BASH SCRIPTING",date:"2026-03-29",text:"Loops",comment:"Practice",done:false}
     ];
-
     save();
     localStorage.setItem(INIT_KEY,true);
   } else {
-    load();
+    data = JSON.parse(localStorage.getItem(STORAGE_KEY));
   }
 
   renderNav();
   showPage('home');
 }
 
-/* =========================
-   NAV
-========================= */
+/* UTIL */
+function save() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+function uid() {
+  return "id-"+Date.now()+Math.random();
+}
+
+/* NAV */
 function renderNav() {
-  let html = "Categories: ";
+  let html="Categories: ";
   data.categories.forEach(c=>{
-    html += `<a onclick="openCategory('${c}')">${c}</a>`;
+    html+=`<a onclick="openCategory('${c}')">${c}</a>`;
   });
-  html += `<a onclick="showPage('manage')">[Manage]</a>`;
-  document.getElementById("categoryNav").innerHTML = html;
+  document.getElementById("categoryNav").innerHTML=html;
 }
 
 function showPage(p) {
   document.querySelectorAll(".container > div").forEach(d=>d.classList.add("hidden"));
   document.getElementById(p+"Page").classList.remove("hidden");
+
+  if (p === "manage") renderManage(); // FIX
 }
 
-/* =========================
-   HOME
-========================= */
+/* HOME */
 function loadHome() {
   const date = document.getElementById("homeDate").value;
   const rows = data.entries.filter(e=>e.date===date);
@@ -235,75 +210,129 @@ function loadHome() {
   let html = `<p>Total: ${rows.length}</p>`;
   if (!rows.length) html += "No tasks found";
 
-  html += `<table><tr><th>Category</th><th>Date</th><th>Task</th><th>Done</th><th>Actions</th></tr>`;
+  html += `<table>
+<tr><th>Category</th><th>Date</th><th>Task</th><th>Comment</th><th>Done</th><th>Actions</th></tr>`;
+
   rows.forEach(e=>{
-    html += `<tr>
+    html+=`<tr>
 <td>${e.category}</td>
 <td>${e.date}</td>
 <td>${e.text}</td>
+<td>${e.comment||""}</td>
 <td><input type="checkbox" ${e.done?"checked":""} onclick="toggleDone('${e.id}')"></td>
 <td>
+<button onclick="openEdit('${e.id}')">Edit</button>
 <button onclick="deleteEntry('${e.id}')">Delete</button>
 </td>
 </tr>`;
   });
-  html += "</table>";
 
-  document.getElementById("homeResults").innerHTML = html;
+  html+="</table>";
+  document.getElementById("homeResults").innerHTML=html;
 }
 
-/* =========================
-   CATEGORY
-========================= */
+/* CATEGORY */
 function openCategory(c) {
-  currentCategory = c;
+  currentCategory=c;
   showPage('category');
-  document.getElementById("categoryTitle").innerText = c;
+  document.getElementById("categoryTitle").innerText=c;
   renderCategory();
 }
 
 function renderCategory() {
-  const rows = data.entries.filter(e=>e.category===currentCategory);
+  const rows=data.entries.filter(e=>e.category===currentCategory);
 
-  let html = "<table><tr><th>Date</th><th>Task</th><th>Done</th><th>Actions</th></tr>";
+  let html=`<table>
+<tr><th>Date</th><th>Task</th><th>Comment</th><th>Done</th><th>Actions</th></tr>`;
 
   rows.forEach(e=>{
-    html += `<tr>
+    html+=`<tr>
 <td>${e.date}</td>
 <td>${e.text}</td>
+<td>${e.comment||""}</td>
 <td><input type="checkbox" ${e.done?"checked":""} onclick="toggleDone('${e.id}')"></td>
 <td>
+<button onclick="openEdit('${e.id}')">Edit</button>
 <button onclick="deleteEntry('${e.id}')">Delete</button>
 </td>
 </tr>`;
   });
 
-  html += "</table>";
-  document.getElementById("categoryTable").innerHTML = html;
+  html+="</table>";
+  document.getElementById("categoryTable").innerHTML=html;
 }
 
 function addEntryUI() {
   const d = document.getElementById("catDate").value;
   const t = document.getElementById("catTask").value;
+  const c = document.getElementById("catComment").value;
   const done = document.getElementById("catDone").checked;
 
   if (!d || !t) return alert("Invalid input");
 
   data.entries.push({
-    id: uid(),
-    category: currentCategory,
-    date: d,
-    text: t,
-    done: done
+    id:uid(),
+    category:currentCategory,
+    date:d,
+    text:t,
+    comment:c,
+    done:done
   });
 
   save();
   renderCategory();
 }
 
-/* =========================
-   CATEGORY MGMT
-========================= */
+/* EDIT */
+function openEdit(id) {
+  const e=data.entries.find(x=>x.id===id);
+  if (!e) return;
+
+  editId=id;
+  editDate.value=e.date;
+  editTask.value=e.text;
+  editComment.value=e.comment||"";
+  editDone.checked=e.done;
+
+  editModal.classList.add("show");
+}
+
+function closeModal() {
+  editModal.classList.remove("show");
+}
+
+function saveEdit() {
+  const e=data.entries.find(x=>x.id===editId);
+  if (!e) return;
+
+  e.date=editDate.value;
+  e.text=editTask.value;
+  e.comment=editComment.value;
+  e.done=editDone.checked;
+
+  save();
+  closeModal();
+
+  renderCategory();
+  loadHome();
+}
+
+/* ENTRY */
+function deleteEntry(id) {
+  if (!confirm("Delete entry?")) return;
+  data.entries=data.entries.filter(e=>e.id!==id);
+  save();
+  renderCategory();
+  loadHome();
+}
+
+function toggleDone(id) {
+  const e=data.entries.find(x=>x.id===id);
+  if (e) e.done=!e.done;
+  save();
+}
+
+/* CATEGORY MGMT */
 function addCategoryUI() {
   const name = document.getElementById("newCategory").value;
   if (!name) return;
@@ -311,18 +340,17 @@ function addCategoryUI() {
   data.categories.push(name);
   save();
   renderNav();
+  renderManage();
 }
 
-function deleteCategory(name) {
-  if (!confirm("Delete category?")) return;
-
-  undoBackup = JSON.stringify(data);
-
-  data.entries = data.entries.filter(e=>e.category!==name);
-  data.categories = data.categories.filter(c=>c!==name);
-
-  save();
-  renderNav();
+function renderManage() {
+  let html="";
+  data.categories.forEach(c=>{
+    html+=`${c}
+    <button onclick="renameCategory('${c}')">Rename</button>
+    <button onclick="deleteCategory('${c}')">Delete</button><br>`;
+  });
+  document.getElementById("manageList").innerHTML=html;
 }
 
 function renameCategory(oldName) {
@@ -337,117 +365,42 @@ function renameCategory(oldName) {
 
   save();
   renderNav();
+  renderManage();
 }
 
-function renderManage() {
-  let html = "";
-  data.categories.forEach(c=>{
-    html += `${c}
-    <button onclick="renameCategory('${c}')">Rename</button>
-    <button onclick="deleteCategory('${c}')">Delete</button><br>`;
-  });
-  document.getElementById("manageList").innerHTML = html;
-}
+function deleteCategory(name) {
+  if (!confirm("Delete category and entries?")) return;
 
-document.getElementById("managePage").addEventListener("click",renderManage);
+  data.entries = data.entries.filter(e=>e.category!==name);
+  data.categories = data.categories.filter(c=>c!==name);
 
-/* =========================
-   ENTRY OPS
-========================= */
-function deleteEntry(id) {
-  undoBackup = JSON.stringify(data);
-  data.entries = data.entries.filter(e=>e.id!==id);
   save();
-  renderCategory();
+  renderNav();
+  renderManage();
 }
 
-function toggleDone(id) {
-  const e = data.entries.find(x=>x.id===id);
-  if (e) e.done = !e.done;
-  save();
-}
-
-/* =========================
-   EXPORT / IMPORT
-========================= */
+/* EXPORT */
 function exportJSON() {
-  const blob = new Blob([JSON.stringify(data)], {type:"application/json"});
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "tasks-backup.json";
+  const blob=new Blob([JSON.stringify(data)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="tasks.json";
   a.click();
 }
 
 function handleImport() {
-  const file = document.getElementById("importFile").files[0];
-  const mode = document.getElementById("importMode").value;
-
-  const reader = new FileReader();
-  reader.onload = e => {
-    const imported = JSON.parse(e.target.result);
-
-    if (mode==="replace") {
-      undoBackup = JSON.stringify(data);
-      data = imported;
-    } else {
-      imported.entries.forEach(en=>{
-        if (!data.entries.find(e=>e.id===en.id)) {
-          data.entries.push(en);
-        }
-      });
-      imported.categories.forEach(c=>{
-        if (!data.categories.includes(c)) data.categories.push(c);
-      });
-    }
-
+  const file=document.getElementById("importFile").files[0];
+  const reader=new FileReader();
+  reader.onload=e=>{
+    data=JSON.parse(e.target.result);
     save();
     renderNav();
   };
   reader.readAsText(file);
 }
 
-/* =========================
-   CSV
-========================= */
-function exportCSV(rows, name) {
-  let csv = "Category,Date,Task,Done\n";
-  rows.forEach(r=>{
-    csv += `${r.category},${r.date},"${r.text}",${r.done}\n`;
-  });
-
-  const blob = new Blob([csv], {type:"text/csv"});
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = name;
-  a.click();
-}
-
-function exportCategoryCSV() {
-  const rows = data.entries.filter(e=>e.category===currentCategory);
-  exportCSV(rows, currentCategory+".csv");
-}
-
-function exportDateCSV() {
-  const d = document.getElementById("homeDate").value;
-  const rows = data.entries.filter(e=>e.date===d);
-  exportCSV(rows, "date-"+d+".csv");
-}
-
-/* =========================
-   UNDO
-========================= */
-function undoLastAction() {
-  if (!undoBackup) return;
-  data = JSON.parse(undoBackup);
-  save();
-  renderNav();
-}
-
-/* =========================
-   START
-========================= */
+/* START */
 init();
-
 </script>
 
 </body>
