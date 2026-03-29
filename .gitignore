@@ -1,0 +1,13 @@
+# Private data - do not commit
+server/data.json
+
+# Dependencies
+server/node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

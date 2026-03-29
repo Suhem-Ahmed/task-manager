@@ -7,7 +7,7 @@
 
 <!--
 
-version 9
+version 10
 ═══════════════════════════════════════════════════════════
    TASKS MANAGER  —  Usage Guide
 ═══════════════════════════════════════════════════════════
@@ -1271,9 +1271,11 @@ td input[type="checkbox"] { display: block; margin: 0 auto; }
    CONFIG
    Change STORAGE_KEY to namespace multiple instances.
    Delete INIT_KEY from localStorage to re-trigger sample data.
+   Set API_URL to your server endpoint.
 ───────────────────────────────────────── */
-const STORAGE_KEY        = "learningTasksData_v4";
-const INIT_KEY           = "learningTasksInitialized_v4";
+const API_URL = "http://192.168.1.102:3000/api/data"; // Backend server URL
+const STORAGE_KEY = "learningTasksData_v4"; // Fallback cache
+const INIT_KEY = "learningTasksInitialized_v4";
 const DEFAULT_CATEGORIES = ["Day2Day", "TASKS", "BASH SCRIPTING"];
 
 /* ─────────────────────────────────────────
@@ -1311,15 +1313,64 @@ function uid() {
   return "id-" + Date.now() + "-" + Math.random().toString(36).slice(2, 9);
 }
 
-/** Persist data object to localStorage */
-function save() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+/** Persist data object to server with localStorage fallback */
+async function save() {
+  try {
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to save');
+    // Update localStorage cache for offline support
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch (error) {
+    console.error('Save failed, using localStorage:', error);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    showMsg('Offline: Data saved to browser storage', true);
+  }
 }
 
-/** Load data object from localStorage */
-function load() {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (raw) data = JSON.parse(raw);
+/** Load data object from server with localStorage fallback */
+async function load() {
+  try {
+    const response = await fetch(API_URL);
+    if (!response.ok) throw new Error('Failed to fetch');
+    data = await response.json();
+    // Cache to localStorage for offline and faster load
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    localStorage.setItem(INIT_KEY, "1");
+  } catch (error) {
+    console.error('Fetch failed, using localStorage:', error);
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      data = JSON.parse(raw);
+      if (!localStorage.getItem(INIT_KEY)) {
+        localStorage.setItem(INIT_KEY, "1");
+      }
+      showMsg('Offline mode: Using browser cached data', true);
+    } else {
+      // No data anywhere, initialize with sample
+      initializeSampleData();
+    }
+  }
+}
+
+/** Initialize with sample data (first run, no cache) */
+function initializeSampleData() {
+  data.categories = [...DEFAULT_CATEGORIES];
+  const today = todayStr();
+  data.entries = [
+    { id: uid(), category: "Day2Day",        date: today, text: "Morning walk — 30 mins",        comment: "health routine",    done: true  },
+    { id: uid(), category: "Day2Day",        date: today, text: "Read 20 pages of current book", comment: "",                  done: false },
+    { id: uid(), category: "TASKS",          date: today, text: "Complete module review",         comment: "urgent — deadline", done: false },
+    { id: uid(), category: "TASKS",          date: today, text: "Reply to pending emails",        comment: "",                  done: true  },
+    { id: uid(), category: "BASH SCRIPTING", date: today, text: "Practice loops and conditionals",comment: "for exam",          done: false },
+  ];
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  localStorage.setItem(INIT_KEY, "1");
+  // Also try to save to server (fire and forget)
+  save().catch(() => {});
 }
 
 /** Show a brief toast notification */
@@ -1381,25 +1432,11 @@ function undoLastAction() {
 
 /* ─────────────────────────────────────────
    INITIALISATION
-   Checks for first-run flag; injects sample data if absent.
+   Load data from server with localStorage fallback
 ───────────────────────────────────────── */
-function init() {
-  if (!localStorage.getItem(INIT_KEY)) {
-    /* First run — seed with sample data */
-    data.categories = [...DEFAULT_CATEGORIES];
-    const today = todayStr();
-    data.entries = [
-      { id: uid(), category: "Day2Day",        date: today, text: "Morning walk — 30 mins",        comment: "health routine",    done: true  },
-      { id: uid(), category: "Day2Day",        date: today, text: "Read 20 pages of current book", comment: "",                  done: false },
-      { id: uid(), category: "TASKS",          date: today, text: "Complete module review",         comment: "urgent — deadline", done: false },
-      { id: uid(), category: "TASKS",          date: today, text: "Reply to pending emails",        comment: "",                  done: true  },
-      { id: uid(), category: "BASH SCRIPTING", date: today, text: "Practice loops and conditionals",comment: "for exam",          done: false },
-    ];
-    save();
-    localStorage.setItem(INIT_KEY, "1");
-  } else {
-    load();
-  }
+async function init() {
+  // Show loading state? For now just silently load
+  await load();
 
   document.getElementById("homeDate").value = todayStr();
   syncDrawerNav();
