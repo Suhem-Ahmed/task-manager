@@ -7,34 +7,62 @@
 <!--
 README
 
-HOW TO USE:
-
-1. Open this file in any browser.
-2. Data is stored in your browser (localStorage).
-3. ALWAYS export JSON to backup your data.
-
-NAVIGATION:
-- Home: Select date → view all tasks across categories
-- Categories: Manage tasks per category
-- Manage Categories: Add / rename / delete categories
-- Import/Export:
-   - Export JSON → full backup
-   - Import JSON → Merge or Replace
-   - Export CSV → all data
-
-IMPORTANT:
-- Deleting categories removes their entries
-- You can Undo last destructive action
-- Dates must be YYYY-MM-DD
+- Open this file in browser
+- Data stored in localStorage
+- Export JSON regularly for backup
 
 -->
 
 <style>
-body { font-family: Arial; margin:0; background:#f5f7fa; }
-nav { background:#222; color:white; padding:10px; }
-nav a { color:white; margin-right:15px; cursor:pointer; font-weight:bold; }
+body { margin:0; font-family:Arial; background:#f5f7fa; }
 
-.container { padding:20px; }
+/* TOP NAV */
+.topnav {
+  background:#222;
+  color:white;
+  padding:10px;
+}
+.topnav button {
+  background:#444;
+  color:white;
+  border:none;
+  margin-right:10px;
+  padding:8px 12px;
+  cursor:pointer;
+}
+.topnav button:hover { background:#666; }
+
+/* LAYOUT */
+.layout {
+  display:flex;
+  height:calc(100vh - 50px);
+}
+
+/* SIDEBAR */
+.sidebar {
+  width:220px;
+  background:#111;
+  color:white;
+  padding:10px;
+  overflow-y:auto;
+}
+.sidebar h3 { margin-top:0; }
+
+.sidebar button {
+  width:100%;
+  margin:4px 0;
+  background:#333;
+}
+.sidebar button.active {
+  background:#008cba;
+}
+
+/* MAIN */
+.main {
+  flex:1;
+  padding:20px;
+  overflow:auto;
+}
 
 .card {
   background:white;
@@ -43,8 +71,14 @@ nav a { color:white; margin-right:15px; cursor:pointer; font-weight:bold; }
   margin-bottom:15px;
 }
 
-table { width:100%; border-collapse:collapse; }
-th, td { border:1px solid #ddd; padding:8px; }
+table {
+  width:100%;
+  border-collapse:collapse;
+}
+th, td {
+  border:1px solid #ddd;
+  padding:8px;
+}
 th { background:#eee; }
 
 button {
@@ -57,9 +91,12 @@ button {
 }
 button:hover { background:#555; }
 
-input, select { padding:5px; margin:5px; }
+input, select {
+  padding:5px;
+  margin:5px;
+}
 
-.hidden { display:none !important; }
+.hidden { display:none; }
 
 .message {
   padding:10px;
@@ -73,15 +110,24 @@ input, select { padding:5px; margin:5px; }
 
 <body>
 
-<nav>
-<a onclick="showPage('home')">Home</a>
-<span id="categoryNav"></span>
-<a onclick="showPage('manage')">Manage</a>
-<a onclick="showPage('importExport')">Import/Export</a>
+<!-- TOP NAV -->
+<div class="topnav">
+<button onclick="showPage('home')">Home</button>
+<button onclick="showPage('manage')">Manage</button>
+<button onclick="showPage('importExport')">Import/Export</button>
 <button onclick="undoLastAction()">Undo</button>
-</nav>
+</div>
 
-<div class="container">
+<div class="layout">
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+<h3>Categories</h3>
+<div id="categoryList"></div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
 
 <div id="msg"></div>
 
@@ -100,6 +146,7 @@ input, select { padding:5px; margin:5px; }
 
 <input type="date" id="catDate">
 <input type="text" id="catTask" placeholder="Task">
+<input type="text" id="catComment" placeholder="Comment">
 <label><input type="checkbox" id="catDone"> Done</label>
 <button onclick="addEntryUI()">Add</button>
 
@@ -138,60 +185,56 @@ input, select { padding:5px; margin:5px; }
 </div>
 
 </div>
+</div>
 
 <script>
-/* ================= CONFIG ================= */
-const STORAGE_KEY = "learningTasksData_v2";
-const INIT_KEY = "learningTasksInitialized_v2";
+/* CONFIG */
+const STORAGE_KEY = "learningTasksData_v4";
+const INIT_KEY = "learningTasksInitialized_v4";
 const DEFAULT_CATEGORIES = ["Day2Day","TASKS","BASH SCRIPTING"];
 
-/* ================= STATE ================= */
+/* STATE */
 let data = { categories: [], entries: [] };
 let currentCategory = null;
 let undoState = null;
 
-/* ================= UTIL ================= */
+/* UTIL */
 function uid() {
   return "id-" + Date.now() + "-" + Math.random().toString(16).slice(2);
 }
-
 function save() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
-
 function load() {
   data = JSON.parse(localStorage.getItem(STORAGE_KEY));
 }
-
-function showMsg(text, isError=false) {
-  const el = document.getElementById("msg");
-  el.innerHTML = `<div class="message ${isError?'error':''}">${text}</div>`;
+function showMsg(text, err=false) {
+  const el=document.getElementById("msg");
+  el.innerHTML=`<div class="message ${err?'error':''}">${text}</div>`;
   setTimeout(()=>el.innerHTML="",3000);
 }
-
 function backup() {
   undoState = JSON.stringify(data);
 }
-
 function undoLastAction() {
   if (!undoState) return showMsg("Nothing to undo", true);
   data = JSON.parse(undoState);
   save();
-  renderNav();
+  renderSidebar();
   loadHome();
   showMsg("Undo successful");
 }
 
-/* ================= INIT ================= */
+/* INIT */
 function init() {
   if (!localStorage.getItem(INIT_KEY)) {
     data.categories = [...DEFAULT_CATEGORIES];
     const today = new Date().toISOString().slice(0,10);
 
     data.entries = [
-      {id:uid(),category:"Day2Day",date:today,text:"Morning walk",done:false},
-      {id:uid(),category:"TASKS",date:today,text:"Finish project module",done:false},
-      {id:uid(),category:"BASH SCRIPTING",date:today,text:"Practice loops",done:false}
+      {id:uid(),category:"Day2Day",date:today,text:"Morning walk",comment:"health",done:false},
+      {id:uid(),category:"TASKS",date:today,text:"Finish module",comment:"urgent",done:false},
+      {id:uid(),category:"BASH SCRIPTING",date:today,text:"Practice loops",comment:"for exam",done:false}
     ];
 
     save();
@@ -202,28 +245,29 @@ function init() {
 
   document.getElementById("homeDate").value = new Date().toISOString().slice(0,10);
 
-  renderNav();
+  renderSidebar();
   showPage('home');
   loadHome();
 }
 
-/* ================= NAV ================= */
-function renderNav() {
-  let html="Categories: ";
+/* SIDEBAR */
+function renderSidebar() {
+  let html="";
   data.categories.forEach(c=>{
-    html+=`<a onclick="openCategory('${c}')">${c}</a>`;
+    html+=`<button onclick="openCategory('${c}')" class="${c===currentCategory?'active':''}">${c}</button>`;
   });
-  document.getElementById("categoryNav").innerHTML=html;
+  document.getElementById("categoryList").innerHTML=html;
 }
 
+/* NAV */
 function showPage(p) {
-  document.querySelectorAll(".container > div").forEach(d=>d.classList.add("hidden"));
+  document.querySelectorAll(".main > div").forEach(d=>d.classList.add("hidden"));
   document.getElementById(p+"Page").classList.remove("hidden");
 
   if (p==="manage") renderManage();
 }
 
-/* ================= HOME ================= */
+/* HOME */
 function getEntriesByDate(date) {
   return data.entries.filter(e=>e.date===date);
 }
@@ -232,20 +276,21 @@ function loadHome() {
   const date = document.getElementById("homeDate").value;
   const rows = getEntriesByDate(date);
 
-  let html = `<p>Total: ${rows.length}</p>`;
-  if (!rows.length) html += "<p>No tasks found</p>";
+  let html=`<p>Total: ${rows.length}</p>`;
+  if (!rows.length) html+="<p>No tasks found</p>";
 
-  html += `<table>
-<tr><th>Category</th><th>Date</th><th>Task</th><th>Done</th><th>Actions</th></tr>`;
+  html+=`<table>
+<tr><th>Category</th><th>Date</th><th>Task</th><th>Comment</th><th>Done</th><th>Actions</th></tr>`;
 
   rows.forEach(e=>{
     html+=`<tr>
 <td>${e.category}</td>
 <td>${e.date}</td>
 <td>${e.text}</td>
+<td>${e.comment||""}</td>
 <td><input type="checkbox" ${e.done?"checked":""} onclick="toggleDone('${e.id}')"></td>
 <td>
-<button onclick="editEntryPrompt('${e.id}')">Edit</button>
+<button onclick="editEntry('${e.id}')">Edit</button>
 <button onclick="deleteEntry('${e.id}')">Delete</button>
 </td>
 </tr>`;
@@ -255,9 +300,10 @@ function loadHome() {
   document.getElementById("homeResults").innerHTML=html;
 }
 
-/* ================= CATEGORY ================= */
+/* CATEGORY */
 function openCategory(c) {
   currentCategory=c;
+  renderSidebar();
   showPage('category');
   document.getElementById("categoryTitle").innerText=c;
   renderCategory();
@@ -267,15 +313,16 @@ function renderCategory() {
   const rows=data.entries.filter(e=>e.category===currentCategory);
 
   let html=`<table>
-<tr><th>Date</th><th>Task</th><th>Done</th><th>Actions</th></tr>`;
+<tr><th>Date</th><th>Task</th><th>Comment</th><th>Done</th><th>Actions</th></tr>`;
 
   rows.forEach(e=>{
     html+=`<tr>
 <td>${e.date}</td>
 <td>${e.text}</td>
+<td>${e.comment||""}</td>
 <td><input type="checkbox" ${e.done?"checked":""} onclick="toggleDone('${e.id}')"></td>
 <td>
-<button onclick="editEntryPrompt('${e.id}')">Edit</button>
+<button onclick="editEntry('${e.id}')">Edit</button>
 <button onclick="deleteEntry('${e.id}')">Delete</button>
 </td>
 </tr>`;
@@ -286,26 +333,28 @@ function renderCategory() {
 }
 
 function addEntryUI() {
-  const d = document.getElementById("catDate").value;
-  const t = document.getElementById("catTask").value.trim();
-  const done = document.getElementById("catDone").checked;
+  const d=document.getElementById("catDate").value;
+  const t=document.getElementById("catTask").value.trim();
+  const c=document.getElementById("catComment").value.trim();
+  const done=document.getElementById("catDone").checked;
 
-  if (!d || !t) return showMsg("Invalid input", true);
+  if (!d || !t) return showMsg("Invalid input",true);
 
   data.entries.push({
     id:uid(),
     category:currentCategory,
     date:d,
     text:t,
+    comment:c,
     done:done
   });
 
   save();
   renderCategory();
-  showMsg("Entry added");
+  showMsg("Added");
 }
 
-/* ================= ENTRY ================= */
+/* ENTRY */
 function toggleDone(id) {
   const e=data.entries.find(x=>x.id===id);
   if (e) e.done=!e.done;
@@ -321,27 +370,29 @@ function deleteEntry(id) {
   loadHome();
 }
 
-function editEntryPrompt(id) {
+function editEntry(id) {
   const e=data.entries.find(x=>x.id===id);
   if (!e) return;
 
-  const newText = prompt("Edit task:", e.text);
-  if (!newText) return;
+  const t=prompt("Task:",e.text);
+  if (t===null) return;
+  const c=prompt("Comment:",e.comment||"");
 
-  e.text=newText;
+  e.text=t;
+  e.comment=c;
   save();
   renderCategory();
   loadHome();
 }
 
-/* ================= CATEGORY MGMT ================= */
+/* CATEGORY MGMT */
 function addCategoryUI() {
-  const name = document.getElementById("newCategory").value.trim();
-  if (!name || data.categories.includes(name)) return showMsg("Invalid category", true);
+  const name=document.getElementById("newCategory").value.trim();
+  if (!name || data.categories.includes(name)) return showMsg("Invalid category",true);
 
   data.categories.push(name);
   save();
-  renderNav();
+  renderSidebar();
   renderManage();
 }
 
@@ -356,17 +407,16 @@ function renderManage() {
 }
 
 function renameCategory(oldName) {
-  const newName = prompt("New name:", oldName);
-  if (!newName) return;
+  const n=prompt("New name:",oldName);
+  if (!n || data.categories.includes(n)) return;
 
   data.entries.forEach(e=>{
-    if (e.category===oldName) e.category=newName;
+    if (e.category===oldName) e.category=n;
   });
 
-  data.categories = data.categories.map(c=>c===oldName?newName:c);
-
+  data.categories=data.categories.map(c=>c===oldName?n:c);
   save();
-  renderNav();
+  renderSidebar();
   renderManage();
 }
 
@@ -374,17 +424,17 @@ function deleteCategory(name) {
   if (!confirm("Delete category and entries?")) return;
 
   backup();
-  data.entries = data.entries.filter(e=>e.category!==name);
-  data.categories = data.categories.filter(c=>c!==name);
+  data.entries=data.entries.filter(e=>e.category!==name);
+  data.categories=data.categories.filter(c=>c!==name);
 
   save();
-  renderNav();
+  renderSidebar();
   renderManage();
 }
 
-/* ================= EXPORT ================= */
+/* EXPORT */
 function exportJSON() {
-  const fileName = "tasks-backup-"+new Date().toISOString().slice(0,10)+".json";
+  const fileName="tasks-"+new Date().toISOString().slice(0,10)+".json";
   const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
   const a=document.createElement("a");
   a.href=URL.createObjectURL(blob);
@@ -392,35 +442,30 @@ function exportJSON() {
   a.click();
 }
 
-function exportCSV(rows, filename) {
-  let csv = "Category,Date,Task,Done\n";
+function exportCSV(rows, name) {
+  let csv="Category,Date,Task,Comment,Done\n";
   rows.forEach(r=>{
-    csv+=`${r.category},${r.date},"${r.text}",${r.done}\n`;
+    csv+=`${r.category},${r.date},"${r.text}","${r.comment}",${r.done}\n`;
   });
-
   const blob=new Blob([csv],{type:"text/csv"});
   const a=document.createElement("a");
   a.href=URL.createObjectURL(blob);
-  a.download=filename;
+  a.download=name;
   a.click();
 }
 
 function exportAllCSV() {
-  exportCSV(data.entries,"all-tasks.csv");
+  exportCSV(data.entries,"all.csv");
 }
-
 function exportCategoryCSV() {
-  const rows=data.entries.filter(e=>e.category===currentCategory);
-  exportCSV(rows, currentCategory+".csv");
+  exportCSV(data.entries.filter(e=>e.category===currentCategory),currentCategory+".csv");
 }
-
 function exportDateCSV() {
-  const date=document.getElementById("homeDate").value;
-  const rows=getEntriesByDate(date);
-  exportCSV(rows,"tasks-"+date+".csv");
+  const d=document.getElementById("homeDate").value;
+  exportCSV(getEntriesByDate(d),"date-"+d+".csv");
 }
 
-/* ================= IMPORT ================= */
+/* IMPORT */
 function handleImport() {
   const file=document.getElementById("importFile").files[0];
   const mode=document.getElementById("importMode").value;
@@ -428,37 +473,34 @@ function handleImport() {
 
   const reader=new FileReader();
   reader.onload=e=>{
-    const imported=JSON.parse(e.target.result);
+    const imp=JSON.parse(e.target.result);
 
     document.getElementById("importPreview").innerText =
-      `Categories: ${imported.categories.length}, Entries: ${imported.entries.length}`;
+      `Categories: ${imp.categories.length}, Entries: ${imp.entries.length}`;
 
-    if (!confirm("Proceed with import?")) return;
+    if (!confirm("Proceed import?")) return;
 
     backup();
 
     if (mode==="replace") {
-      data=imported;
+      data=imp;
     } else {
-      imported.entries.forEach(ne=>{
-        if (!data.entries.find(e=>e.id===ne.id)) {
-          data.entries.push(ne);
-        }
+      imp.entries.forEach(ne=>{
+        if (!data.entries.find(e=>e.id===ne.id)) data.entries.push(ne);
       });
-
-      imported.categories.forEach(c=>{
+      imp.categories.forEach(c=>{
         if (!data.categories.includes(c)) data.categories.push(c);
       });
     }
 
     save();
-    renderNav();
-    showMsg("Import successful");
+    renderSidebar();
+    showMsg("Import done");
   };
   reader.readAsText(file);
 }
 
-/* ================= BULK ================= */
+/* BULK */
 function markAllDone() {
   data.entries.forEach(e=>{
     if (e.category===currentCategory) e.done=true;
@@ -467,7 +509,7 @@ function markAllDone() {
   renderCategory();
 }
 
-/* ================= START ================= */
+/* START */
 init();
 </script>
 
