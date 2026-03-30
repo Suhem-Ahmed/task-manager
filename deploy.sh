@@ -7,35 +7,41 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
-echo -e "${GREEN}🚀 Deploying Tasks Manager...${NC}"
+echo -e "${GREEN}🚀 Deploying Tasks Manager (with Nginx Proxy + Auth)...${NC}"
 
 # Check if we're in the right directory
-if [ ! -f "Dockerfile" ] || [ ! -f "index.html" ]; then
-  echo -e "${RED}❌ Error: Must run from project root (where Dockerfile is)${NC}"
+if [ ! -f "Dockerfile" ] || [ ! -f "index.html" ] || [ ! -f "docker-compose.yml" ]; then
+  echo -e "${RED}❌ Error: Must run from project root (with Dockerfile, index.html, docker-compose.yml)${NC}"
   exit 1
 fi
 
-# Pull latest from git (optional - uncomment if needed)
-# echo -e "${YELLOW}📥 Pulling latest from git...${NC}"
-# git pull
+# Check if required auth files exist
+if [ ! -f "task.htpasswd" ]; then
+  echo -e "${YELLOW}⚠️  task.htpasswd not found!${NC}"
+  echo "Create it with: htpasswd -c ./task.htpasswd msa"
+  exit 1
+fi
 
-# Stop and remove existing container if exists
-echo -e "${YELLOW}🧹 Cleaning up old container...${NC}"
-docker stop tasks-manager 2>/dev/null || true
-docker rm tasks-manager 2>/dev/null || true
+if [ ! -f "task.conf" ]; then
+  echo -e "${YELLOW}⚠️  task.conf (nginx config) not found!${NC}"
+  exit 1
+fi
 
-# Build new image
-echo -e "${YELLOW}🔨 Building Docker image...${NC}"
-docker build --network=host -t tasks-manager .
+# Stop existing containers
+echo -e "${YELLOW}🧹 Stopping existing containers...${NC}"
+docker-compose down 2>/dev/null || true
 
-# Run new container
-echo -e "${YELLOW}▶️  Starting container...${NC}"
-docker run -d \
-  --name tasks-manager \
-  --restart unless-stopped \
-  -p 7777:3000 \
-  -v tasks-manager-data:/app/data \
-  tasks-manager
+# Build image with network=host to fix npm DNS issues
+echo -e "${YELLOW}🔨 Building Docker image (this may take 2-3 minutes)...${NC}"
+docker build --no-cache --network=host -t tasks-manager .
+
+# Start all services with docker-compose
+echo -e "${YELLOW}▶️  Starting services...${NC}"
+docker-compose up -d
+
+# Wait for services to be healthy
+echo -e "${YELLOW}⏳ Waiting for services to start...${NC}"
+sleep 8
 
 # Get server IP
 SERVER_IP=$(hostname -I | awk '{print $1}')
@@ -45,13 +51,24 @@ fi
 
 echo ""
 echo -e "${GREEN}✅ Deployment complete!${NC}"
-echo -e "   Access your app at: ${YELLOW}http://$SERVER_IP:7777${NC}"
+echo ""
+echo "Services running:"
+echo "   📱 App (with auth): http://$SERVER_IP:7778"
+echo "   🔧 Backend API:      http://$SERVER_IP:3000 (direct, no auth - internal only)"
+echo ""
+echo "Authentication:"
+echo "   Username: msa"
+echo "   Password: (what you set with htpasswd)"
 echo ""
 echo -e "📋 Useful commands:"
-echo "   View logs:    docker logs -f tasks-manager"
-echo "   Stop:         docker stop tasks-manager"
-echo "   Start:        docker start tasks-manager"
-echo "   Restart:      docker restart tasks-manager"
-echo "   Backup data:  ./backup.sh"
-echo "   Update:       ./deploy.sh (after git pull)"
+echo "   View all logs:        docker-compose logs -f"
+echo "   View nginx logs:      docker-compose logs -f nginx-proxy"
+echo "   View app logs:        docker-compose logs -f tasks-manager"
+echo "   Stop all:             docker-compose down"
+echo "   Restart:              docker-compose restart"
+echo "   Backup data:          ./backup.sh"
+echo "   Check status:         docker-compose ps"
+echo ""
+echo -e "${YELLOW}💡 To update after git pull:${NC}"
+echo "   git pull && ./deploy.sh"
 echo ""
