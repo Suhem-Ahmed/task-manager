@@ -14,3 +14,6 @@ Thumbs.db
 
 # Security - do not commit
 task.htpasswd
+
+# SSL certificates (private keys) - do not commit
+ssl/

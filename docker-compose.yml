@@ -23,14 +23,17 @@ services:
     container_name: tasks-manager-nginx
     restart: unless-stopped
     ports:
-      - "7778:80"  # External access through this port
+      - "80:80"   # HTTP - redirects to HTTPS
+      - "443:443" # HTTPS
     volumes:
       - ./task.conf:/etc/nginx/conf.d/default.conf:ro
       - ./task.htpasswd:/etc/nginx/.htpasswd:ro
+      - ./ssl/cert.pem:/etc/nginx/ssl/cert.pem:ro
+      - ./ssl/key.pem:/etc/nginx/ssl/key.pem:ro
     depends_on:
       - tasks-manager
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost"]
+      test: ["CMD", "curl", "-f", "https://localhost"]
       interval: 30s
       timeout: 3s
       retries: 3
