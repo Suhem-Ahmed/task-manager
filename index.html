@@ -7,7 +7,7 @@
 
 <!--
 
-version 10
+version 13
 ═══════════════════════════════════════════════════════════
    TASKS MANAGER  —  Usage Guide
 ═══════════════════════════════════════════════════════════
@@ -44,7 +44,7 @@ version 10
 
 <style>
 /* ═══════════════════════════════════════════
-   DESIGN TOKENS  —  Professional Light System
+   DESIGN TOKENS  —  Premium Light System
 ═══════════════════════════════════════════ */
 :root {
   /* Surface palette */
@@ -61,20 +61,22 @@ version 10
   --gray-800:    #1a1a1a;
   --gray-900:    #111111;
 
-  /* Accent — a single, restrained ink blue */
-  --accent:      #1a56db;
-  --accent-light:#eff4ff;
-  --accent-mid:  #d1e0fe;
+  /* Accent — refined indigo with gradient */
+  --accent:      #4f46e5;
+  --accent-light:#eef2ff;
+  --accent-mid:  #c7d2fe;
+  --accent-hover:#4338ca;
 
   /* Semantic */
-  --success:     #0d7a4e;
+  --success:     #059669;
   --success-bg:  #ecfdf5;
   --success-bd:  #a7f3d0;
-  --danger:      #b91c1c;
+  --danger:      #dc2626;
   --danger-bg:   #fef2f2;
   --danger-bd:   #fecaca;
-  --warn:        #b45309;
+  --warn:        #d97706;
   --warn-bg:     #fffbeb;
+  --warn-bd:     #fde68a;
 
   /* Typography */
   --font-ui:     'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -83,15 +85,15 @@ version 10
   /* Layout */
   --nav-h:       52px;
   --sidebar-w:   220px;
-  --radius-sm:   5px;
-  --radius:      8px;
-  --radius-lg:   12px;
+  --radius-sm:   6px;
+  --radius:      10px;
+  --radius-lg:   14px;
 
-  /* Shadows */
-  --shadow-xs:   0 1px 2px rgba(0,0,0,.05);
-  --shadow-sm:   0 1px 4px rgba(0,0,0,.08), 0 0 0 1px rgba(0,0,0,.04);
-  --shadow-md:   0 4px 16px rgba(0,0,0,.1), 0 0 0 1px rgba(0,0,0,.04);
-  --shadow-lg:   0 12px 40px rgba(0,0,0,.14);
+  /* Shadows — softer, more layered */
+  --shadow-xs:   0 1px 2px rgba(0,0,0,.04);
+  --shadow-sm:   0 1px 6px rgba(0,0,0,.06), 0 0 0 1px rgba(0,0,0,.03);
+  --shadow-md:   0 4px 16px rgba(0,0,0,.08), 0 0 0 1px rgba(0,0,0,.03);
+  --shadow-lg:   0 12px 40px rgba(0,0,0,.12);
 }
 
 /* ═══════════════════════════════════════════
@@ -106,6 +108,7 @@ body {
   font-size: 14px;
   line-height: 1.5;
   min-height: 100%;
+  zoom: 1.1;
 }
 body.drawer-open { overflow: hidden; }
 
@@ -115,7 +118,9 @@ body.drawer-open { overflow: hidden; }
 .topnav {
   position: fixed; top: 0; left: 0; right: 0;
   height: var(--nav-h);
-  background: var(--white);
+  background: rgba(255,255,255,.85);
+  backdrop-filter: blur(12px) saturate(1.4);
+  -webkit-backdrop-filter: blur(12px) saturate(1.4);
   border-bottom: 1px solid var(--gray-100);
   display: flex;
   align-items: center;
@@ -171,7 +176,7 @@ body.drawer-open { overflow: hidden; }
   letter-spacing: 0;
 }
 
-/* Nav links */
+/* Page transition */
 .nav-links {
   display: flex;
   align-items: center;
@@ -187,16 +192,17 @@ body.drawer-open { overflow: hidden; }
   background: transparent;
   border: none;
   padding: 0 12px;
-  height: 32px;
-  border-radius: var(--radius-sm);
+  height: 34px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: color .12s, background .12s;
+  transition: all .2s ease;
   white-space: nowrap;
   -webkit-tap-highlight-color: transparent;
   letter-spacing: -.01em;
+  position: relative;
 }
-.nav-btn:hover  { color: var(--gray-900); background: var(--gray-50); }
-.nav-btn.active { color: var(--gray-900); background: var(--gray-100); font-weight: 600; }
+.nav-btn:hover  { color: var(--gray-800); background: var(--gray-50); }
+.nav-btn.active { color: var(--accent); background: var(--accent-light); font-weight: 600; }
 
 .nav-spacer { flex: 1; min-width: 4px; }
 
@@ -211,9 +217,10 @@ body.drawer-open { overflow: hidden; }
   padding: 5px 12px;
   border-radius: 100px;
   cursor: pointer;
-  transition: all .12s;
+  transition: all .2s ease;
   white-space: nowrap;
   -webkit-tap-highlight-color: transparent;
+  box-shadow: var(--shadow-xs);
 }
 .nav-undo:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-light); }
 
@@ -277,13 +284,13 @@ body.drawer-open { overflow: hidden; }
   background: transparent;
   color: var(--gray-600);
   border: none;
-  padding: 8px 10px;
-  border-radius: var(--radius-sm);
+  padding: 9px 12px;
+  border-radius: 8px;
   cursor: pointer;
   font-family: var(--font-ui);
   font-size: 13px;
   font-weight: 400;
-  transition: background .1s, color .1s;
+  transition: all .15s ease;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -292,18 +299,19 @@ body.drawer-open { overflow: hidden; }
   gap: 8px;
   -webkit-tap-highlight-color: transparent;
   line-height: 1.4;
+  position: relative;
 }
 .sidebar-dot {
-  width: 5px; height: 5px;
+  width: 6px; height: 6px;
   border-radius: 50%;
   background: var(--gray-300);
   flex-shrink: 0;
-  transition: background .1s;
+  transition: all .15s ease;
 }
 .sidebar-btn:hover { background: var(--gray-50); color: var(--gray-900); }
 .sidebar-btn:hover .sidebar-dot { background: var(--gray-500); }
 .sidebar-btn.active { background: var(--accent-light); color: var(--accent); font-weight: 500; }
-.sidebar-btn.active .sidebar-dot { background: var(--accent); }
+.sidebar-btn.active .sidebar-dot { background: var(--accent); box-shadow: 0 0 0 3px rgba(79,70,229,.12); }
 
 .sidebar-count {
   margin-left: auto;
@@ -369,14 +377,14 @@ body.drawer-open { overflow: hidden; }
   max-width: calc(100vw - 32px);
 }
 .message {
-  padding: 9px 18px;
+  padding: 9px 20px;
   background: var(--gray-900);
   color: var(--white);
   border-radius: 100px;
   font-family: var(--font-mono);
   font-size: 11.5px;
   box-shadow: var(--shadow-lg);
-  animation: toastIn .18s ease;
+  animation: toastSlideIn .25s ease;
   text-align: center;
   white-space: nowrap;
   letter-spacing: .01em;
@@ -432,25 +440,28 @@ body.drawer-open { overflow: hidden; }
 ═══════════════════════════════════════════ */
 .card {
   background: var(--white);
-  border: 1px solid var(--gray-100);
+  border: 1px solid rgba(0,0,0,.05);
   border-radius: var(--radius-lg);
-  padding: 20px 24px;
+  padding: 24px 28px;
   margin-bottom: 16px;
-  box-shadow: var(--shadow-xs);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow .25s ease;
 }
+.card:hover { box-shadow: var(--shadow-md); }
+
 .card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
   gap: 12px;
 }
 .card-title {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: .06em;
-  color: var(--gray-500);
+  letter-spacing: .08em;
+  color: var(--gray-400);
 }
 
 /* ═══════════════════════════════════════════
@@ -488,27 +499,28 @@ input[type="text"],
 input[type="date"],
 select,
 textarea {
-  background: var(--white);
+  background: var(--gray-50);
   border: 1px solid var(--gray-200);
   color: var(--gray-900);
   border-radius: var(--radius-sm);
-  padding: 8px 11px;
+  padding: 9px 12px;
   font-family: var(--font-ui);
   font-size: 13.5px;
   outline: none;
-  transition: border-color .12s, box-shadow .12s;
+  transition: border-color .2s, box-shadow .2s, background .2s;
   -webkit-appearance: none;
   width: 100%;
   line-height: 1.4;
 }
 input[type="text"]:hover,
 input[type="date"]:hover,
-select:hover { border-color: var(--gray-300); }
+select:hover { border-color: var(--gray-300); background: var(--white); }
 input[type="text"]:focus,
 input[type="date"]:focus,
 select:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(26,86,219,.1);
+  background: var(--white);
+  box-shadow: 0 0 0 3px rgba(79,70,229,.1);
 }
 input[type="date"] { font-family: var(--font-mono); font-size: 13px; }
 select { cursor: pointer; background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%238f8f8f' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; }
@@ -534,34 +546,36 @@ input::placeholder { color: var(--gray-300); }
 ═══════════════════════════════════════════ */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  padding: 8px 16px;
-  border-radius: var(--radius-sm);
+  padding: 9px 18px;
+  border-radius: 8px;
   border: none;
   font-family: var(--font-ui);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: all .12s;
+  transition: all .2s ease;
   white-space: nowrap;
   line-height: 1;
   letter-spacing: -.01em;
   -webkit-tap-highlight-color: transparent;
+  position: relative;
 }
 .btn:active { transform: translateY(1px); }
 
 .btn-primary {
   background: var(--gray-900);
   color: var(--white);
-  box-shadow: var(--shadow-xs);
+  box-shadow: 0 1px 3px rgba(0,0,0,.15);
 }
-.btn-primary:hover { background: var(--gray-700); }
+.btn-primary:hover { background: var(--gray-700); box-shadow: 0 2px 6px rgba(0,0,0,.2); transform: translateY(-1px); }
+.btn-primary:active { transform: translateY(0); }
 
 .btn-accent {
   background: var(--accent);
   color: var(--white);
-  box-shadow: var(--shadow-xs);
+  box-shadow: 0 1px 3px rgba(79,70,229,.25);
 }
-.btn-accent:hover { background: #1749c0; }
+.btn-accent:hover { background: var(--accent-hover); box-shadow: 0 2px 8px rgba(79,70,229,.3); transform: translateY(-1px); }
 
 .btn-outline {
   background: var(--white);
@@ -569,7 +583,7 @@ input::placeholder { color: var(--gray-300); }
   border: 1px solid var(--gray-200);
   box-shadow: var(--shadow-xs);
 }
-.btn-outline:hover { background: var(--gray-50); border-color: var(--gray-300); color: var(--gray-900); }
+.btn-outline:hover { background: var(--gray-50); border-color: var(--gray-300); color: var(--gray-900); transform: translateY(-1px); }
 
 .btn-ghost {
   background: transparent;
@@ -608,13 +622,15 @@ input::placeholder { color: var(--gray-300); }
 }
 .stat-card {
   background: var(--white);
-  border: 1px solid var(--gray-100);
+  border: 1px solid rgba(0,0,0,.05);
   border-radius: var(--radius);
-  padding: 16px 18px;
-  box-shadow: var(--shadow-xs);
+  padding: 20px 22px;
+  box-shadow: var(--shadow-sm);
+  transition: transform .2s ease, box-shadow .2s ease;
 }
+.stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
 .stat-num {
-  font-size: 28px;
+  font-size: 30px;
   font-weight: 600;
   color: var(--gray-900);
   line-height: 1;
@@ -630,22 +646,21 @@ input::placeholder { color: var(--gray-300); }
   color: var(--gray-400);
   text-transform: uppercase;
   letter-spacing: .08em;
-  margin-top: 5px;
+  margin-top: 6px;
 }
 
 /* Progress bar inside stat */
 .stat-bar {
-  height: 3px;
+  height: 4px;
   background: var(--gray-100);
   border-radius: 99px;
-  margin-top: 10px;
+  margin-top: 12px;
   overflow: hidden;
 }
 .stat-bar-fill {
   height: 100%;
-  background: var(--accent);
   border-radius: 99px;
-  transition: width .4s ease;
+  transition: width .5s ease;
 }
 
 /* ═══════════════════════════════════════════
@@ -655,9 +670,9 @@ input::placeholder { color: var(--gray-300); }
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   border-radius: var(--radius);
-  border: 1px solid var(--gray-100);
+  border: 1px solid rgba(0,0,0,.05);
   background: var(--white);
-  box-shadow: var(--shadow-xs);
+  box-shadow: var(--shadow-sm);
 }
 table {
   width: 100%;
@@ -665,7 +680,7 @@ table {
   font-size: 13px;
   min-width: 480px;
 }
-thead { background: var(--gray-25); }
+thead { background: var(--gray-50); }
 th {
   font-family: var(--font-mono);
   font-size: 10px;
@@ -673,20 +688,20 @@ th {
   text-transform: uppercase;
   letter-spacing: .08em;
   color: var(--gray-400);
-  padding: 10px 14px;
+  padding: 12px 16px;
   text-align: left;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1.5px solid var(--gray-100);
   white-space: nowrap;
 }
 td {
-  padding: 10px 14px;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--gray-50);
   color: var(--gray-700);
   vertical-align: middle;
 }
 tr:last-child td { border-bottom: none; }
-tbody tr { transition: background .08s; }
-tbody tr:hover { background: var(--gray-25); }
+tbody tr { transition: background .15s; }
+tbody tr:hover { background: var(--accent-light); }
 
 /* Checkbox alignment in table */
 td input[type="checkbox"] { display: block; margin: 0 auto; }
@@ -695,13 +710,19 @@ td input[type="checkbox"] { display: block; margin: 0 auto; }
 .td-task {
   color: var(--gray-900);
   font-weight: 400;
-  max-width: 300px;
+  max-width: 320px;
 }
+
+/* Comment cell — force wrapping of long text */
 .td-comment {
-  color: var(--gray-400);
-  font-size: 12px;
-  font-style: italic;
-  max-width: 200px;
+  color: var(--gray-500);
+  font-size: 12.5px;
+  max-width: 0;
+  min-width: 120px;
+  line-height: 1.6;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
 }
 .td-date {
   font-family: var(--font-mono);
@@ -724,26 +745,26 @@ td input[type="checkbox"] { display: block; margin: 0 auto; }
 
 .entry-card {
   background: var(--white);
-  border: 1px solid var(--gray-100);
+  border: 1px solid rgba(0,0,0,.05);
   border-radius: var(--radius);
-  padding: 14px 16px;
-  margin-bottom: 8px;
+  padding: 16px 18px;
+  margin-bottom: 10px;
   box-shadow: var(--shadow-xs);
-  transition: box-shadow .1s;
+  transition: all .2s ease;
 }
-.entry-card:hover { box-shadow: var(--shadow-sm); }
+.entry-card:hover { box-shadow: var(--shadow-sm); transform: translateY(-1px); }
 .entry-card-top {
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 .entry-card-text {
   flex: 1;
   font-size: 13.5px;
   color: var(--gray-900);
   font-weight: 500;
-  line-height: 1.4;
+  line-height: 1.5;
 }
 .entry-card-meta {
   display: flex;
@@ -759,18 +780,18 @@ td input[type="checkbox"] { display: block; margin: 0 auto; }
 ═══════════════════════════════════════════ */
 .badge {
   display: inline-flex; align-items: center;
-  padding: 2px 8px;
+  padding: 3px 10px;
   border-radius: 100px;
-  font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-family: var(--font-ui);
+  font-size: 11px;
   font-weight: 500;
-  line-height: 1.6;
+  line-height: 1.4;
   white-space: nowrap;
 }
-.badge-cat  {
-  background: var(--gray-100);
-  color: var(--gray-600);
-  border: 1px solid var(--gray-200);
+.badge-cat {
+  background: var(--accent-light);
+  color: var(--accent);
+  border: 1px solid var(--accent-mid);
 }
 .badge-done {
   background: var(--success-bg);
@@ -780,7 +801,7 @@ td input[type="checkbox"] { display: block; margin: 0 auto; }
 .badge-todo {
   background: var(--warn-bg);
   color: var(--warn);
-  border: 1px solid #fde68a;
+  border: 1px solid var(--warn-bd);
 }
 .badge-date {
   background: var(--gray-50);
@@ -819,22 +840,23 @@ td input[type="checkbox"] { display: block; margin: 0 auto; }
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 14px;
+  padding: 14px 16px;
   background: var(--white);
-  border: 1px solid var(--gray-100);
-  border-radius: var(--radius-sm);
-  transition: box-shadow .1s;
+  border: 1px solid rgba(0,0,0,.05);
+  border-radius: 8px;
+  transition: all .2s ease;
   flex-wrap: wrap;
 }
-.manage-item:hover { box-shadow: var(--shadow-sm); }
+.manage-item:hover { box-shadow: var(--shadow-sm); transform: translateY(-1px); }
 .manage-item-icon {
-  width: 28px; height: 28px;
-  background: var(--gray-100);
-  border-radius: 6px;
+  width: 30px; height: 30px;
+  background: var(--accent-light);
+  border-radius: 8px;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
   font-size: 12px;
-  color: var(--gray-500);
+  color: var(--accent);
+  font-weight: 600;
 }
 .manage-item-name {
   flex: 1;
@@ -899,14 +921,14 @@ td input[type="checkbox"] { display: block; margin: 0 auto; }
 ═══════════════════════════════════════════ */
 .inline-edit {
   background: var(--white);
-  border: 1px solid var(--accent);
-  border-radius: 4px;
-  padding: 4px 8px;
+  border: 1.5px solid var(--accent);
+  border-radius: 6px;
+  padding: 6px 10px;
   font-family: var(--font-ui);
   font-size: 13px;
   outline: none;
   width: 100%;
-  box-shadow: 0 0 0 3px rgba(26,86,219,.1);
+  box-shadow: 0 0 0 3px rgba(79,70,229,.1);
 }
 
 /* ═══════════════════════════════════════════
@@ -923,6 +945,128 @@ td input[type="checkbox"] { display: block; margin: 0 auto; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--gray-200); border-radius: 99px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--gray-300); }
+
+/* ═══════════════════════════════════════════
+   INLINE EDIT INPUTS (table row editing)
+═══════════════════════════════════════════ */
+tr.editing {
+  background: var(--accent-light) !important;
+}
+tr.editing td {
+  vertical-align: top;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+.inline-edit {
+  background: var(--white);
+  border: 1.5px solid var(--accent);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  outline: none;
+  width: 100%;
+  box-shadow: 0 0 0 3px rgba(79,70,229,.08);
+  transition: all .15s ease;
+}
+.inline-edit:focus {
+  box-shadow: 0 0 0 3px rgba(79,70,229,.15);
+  border-color: var(--accent-hover);
+}
+.inline-edit-date {
+  background: var(--white);
+  border: 1.5px solid var(--accent);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  outline: none;
+  width: 100%;
+  transition: border-color .15s, box-shadow .15s;
+}
+.inline-edit-date:focus {
+  border-color: var(--accent-hover);
+  box-shadow: 0 0 0 3px rgba(79,70,229,.12);
+}
+.inline-select {
+  background: var(--white);
+  border: 1.5px solid var(--accent);
+  border-radius: 6px;
+  padding: 6px 28px 6px 10px;
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  outline: none;
+  cursor: pointer;
+  width: 100%;
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%238f8f8f' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  box-shadow: 0 0 0 3px rgba(79,70,229,.08);
+  transition: all .15s ease;
+}
+.inline-select:focus {
+  box-shadow: 0 0 0 3px rgba(79,70,229,.15);
+  border-color: var(--accent-hover);
+}
+
+/* ═══════════════════════════════════════════
+   ANIMATIONS
+═══════════════════════════════════════════ */
+@keyframes cardFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes rowSlideIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes toastSlideIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(12px) scale(.96); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(.96) translateY(16px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .7; }
+}
+
+.animate-card { animation: cardFadeIn .3s ease both; }
+.animate-row  { animation: rowSlideIn .25s ease both; }
+
+/* Stagger children slightly */
+.card > .animate-row  { animation-delay: .02s; }
+
+/* Reorder arrows */
+.move-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px; height: 26px;
+  border-radius: 5px;
+  border: 1px solid var(--gray-200);
+  background: var(--white);
+  cursor: pointer;
+  color: var(--gray-400);
+  font-size: 13px;
+  line-height: 0;
+  transition: all .15s ease;
+  padding: 0;
+}
+.move-arrow:hover:not(:disabled) {
+  background: var(--gray-50);
+  color: var(--gray-700);
+  border-color: var(--gray-300);
+  transform: translateY(-1px);
+}
+.move-arrow:disabled {
+  opacity: .3;
+  cursor: default;
+}
 
 /* ═══════════════════════════════════════════
    RESPONSIVE ≤ 640px
@@ -1005,6 +1149,7 @@ td input[type="checkbox"] { display: block; margin: 0 auto; }
 
   <div class="nav-links">
     <button class="nav-btn active" id="nav-home"         onclick="showPage('home')">Home</button>
+    <button class="nav-btn"        id="nav-bulk"         onclick="showPage('bulk')">Bulk Entry</button>
     <button class="nav-btn"        id="nav-manage"       onclick="showPage('manage')">Categories</button>
     <button class="nav-btn"        id="nav-importExport" onclick="showPage('importExport')">Import / Export</button>
   </div>
@@ -1035,6 +1180,9 @@ td input[type="checkbox"] { display: block; margin: 0 auto; }
     <div class="drawer-nav" id="drawerNav">
       <button class="sidebar-btn" onclick="showPage('home');closeSidebar()">
         <span class="sidebar-dot" style="background:var(--gray-400)"></span>Home
+      </button>
+      <button class="sidebar-btn" onclick="showPage('bulk');closeSidebar()">
+        <span class="sidebar-dot" style="background:var(--gray-400)"></span>Bulk Entry
       </button>
       <button class="sidebar-btn" onclick="showPage('manage');closeSidebar()">
         <span class="sidebar-dot" style="background:var(--gray-400)"></span>Categories
@@ -1249,6 +1397,60 @@ td input[type="checkbox"] { display: block; margin: 0 auto; }
           <li>JSON exports include all categories and their entries.</li>
           <li>CSV exports are flat files suitable for spreadsheet apps.</li>
         </ul>
+      </div>
+    </div>
+
+    <!-- ══ BULK ENTRY PAGE ══ -->
+    <div id="bulkPage" class="hidden">
+      <div class="page-header">
+        <div class="page-header-inner">
+          <div>
+            <h2>Bulk Entry</h2>
+            <p>Add multiple tasks at once quickly</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Quick Add Multiple Entries</div>
+          <button class="btn btn-primary btn-sm" onclick="addBulkRow()">+ Add Row</button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 140px;">Date</th>
+                <th>Task</th>
+                <th style="width: 150px;">Comment</th>
+                <th style="width: 160px;">Category</th>
+                <th style="width: 80px; text-align:center;">Done</th>
+                <th style="width: 80px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="bulk-entries-body"></tbody>
+          </table>
+        </div>
+
+        <div id="bulk-empty-state" class="empty" style="padding: 32px;">
+          <span class="empty-icon">📝</span>
+          <div class="empty-title">No entries yet</div>
+          <div class="empty-sub">Click "Add Row" to add your first entry</div>
+        </div>
+
+        <div style="margin-top: 16px; display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+          <div class="btn-row">
+            <button class="btn btn-success" onclick="saveBulkEntries()">
+              <svg width="11" height="12" viewBox="0 0 11 12" fill="none"><path d="M5.5 1v7M2.5 5.5l3 3 3-3" stroke="white" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M1 9.5v1a.5.5 0 00.5.5h8a.5.5 0 00.5-.5v-1" stroke="white" stroke-width="1.4" stroke-linecap="round"/></svg>
+              Save All (<span id="bulk-count">0</span>)
+            </button>
+            <button class="btn btn-outline" onclick="clearBulkEntries()">Clear All</button>
+          </div>
+          <div style="font-size: 12px; color: var(--gray-400);">
+            Changes are saved to server when you click "Save All"
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1485,11 +1687,12 @@ function showPage(p) {
   document.getElementById(p + "Page").classList.remove("hidden");
 
   // Activate matching nav button
-  const navMap = { home: "nav-home", manage: "nav-manage", importExport: "nav-importExport" };
+  const navMap = { home: "nav-home", bulk: "nav-bulk", manage: "nav-manage", importExport: "nav-importExport" };
   if (navMap[p]) document.getElementById(navMap[p]).classList.add("active");
 
   // Trigger page-specific rendering
   if (p === "manage") renderManage();
+  if (p === "bulk") { if (!bulkRows.length) addBulkRow(); else renderBulkRows(); }
 }
 
 /* ─────────────────────────────────────────
@@ -1582,7 +1785,7 @@ function loadHome() {
           <span class="badge badge-date">${e.date}</span>
           <span class="badge ${e.done ? "badge-done" : "badge-todo"}">${e.done ? "Done" : "Pending"}</span>
         </div>
-        ${e.comment ? `<div style="font-size:12px;color:var(--gray-400);font-style:italic;margin-bottom:8px;">${escHtml(e.comment)}</div>` : ""}
+        ${e.comment ? `<div style="font-size:12px;color:var(--gray-400);font-style:italic;margin-bottom:8px;word-wrap:break-word;overflow-wrap:break-word;line-height:1.5;">${escHtml(e.comment)}</div>` : ""}
         <div class="entry-card-actions">
           <button class="btn btn-outline btn-sm" onclick="editEntry('${e.id}')">Edit</button>
           <button class="btn btn-danger btn-sm" onclick="deleteEntry('${e.id}')">Delete</button>
@@ -1612,6 +1815,9 @@ function openCategory(c) {
   renderCategory();
 }
 
+/** Which entry is currently being inline-edited (null = none) */
+let editingEntry = null;
+
 /** Render the category entry table / card list */
 function renderCategory() {
   const rows = data.entries.filter(e => e.category === currentCategory);
@@ -1628,53 +1834,184 @@ function renderCategory() {
     return;
   }
 
+  // Build category select options for inline edit
+  const catOptions = data.categories.map(c =>
+    `<option value="${escHtml(c)}">${escHtml(c)}</option>`
+  );
+
   /* Desktop table */
   let html = `<div class="table-wrap"><table>
     <thead><tr>
-      <th>Date</th><th>Task</th><th>Comment</th>
-      <th style="text-align:center">Done</th><th>Actions</th>
+      <th style="width:120px">Date</th><th>Task</th><th style="width:180px">Comment</th>
+      <th style="text-align:center;width:70px">Done</th><th style="width:130px">Actions</th>
     </tr></thead><tbody>`;
 
   rows.forEach(e => {
-    html += `<tr>
-      <td class="td-date">${e.date}</td>
-      <td class="td-task">${escHtml(e.text)}</td>
-      <td class="td-comment">${escHtml(e.comment || "—")}</td>
-      <td style="text-align:center">
-        <input type="checkbox" ${e.done ? "checked" : ""} onchange="toggleDone('${e.id}');renderCategory()">
-      </td>
-      <td>
-        <div class="action-btns">
-          <button class="btn btn-ghost btn-sm"  onclick="editEntry('${e.id}')">Edit</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteEntry('${e.id}')">Delete</button>
-        </div>
-      </td>
-    </tr>`;
+    const isEditing = e.id === editingEntry;
+
+    if (isEditing) {
+      const selOpts = catOptions.map(o => {
+        const val = o.match(/value="([^"]*)"/)?.[1] || "";
+        const sel = val === e.category ? "selected" : "";
+        return `<option value="${escHtml(val)}" ${sel}>${escHtml(val)}</option>`;
+      }).join("");
+
+      html += `<tr class="editing animate-row">
+        <td><input type="date" class="inline-edit-date" id="edit-date-${e.id}" value="${e.date}"></td>
+        <td><input type="text" class="inline-edit" id="edit-task-${e.id}" value="${escHtml(e.text)}" placeholder="Task description…"></td>
+        <td><input type="text" class="inline-edit" id="edit-comm-${e.id}" value="${escHtml(e.comment || "")}" placeholder="Notes…"></td>
+        <td style="text-align:center">
+          <input type="checkbox" id="edit-done-${e.id}" ${e.done ? "checked" : ""} style="margin:0 auto;display:block">
+        </td>
+        <td>
+          <div class="action-btns" style="align-items:center">
+            <select class="inline-select" id="edit-cat-${e.id}" style="width:90px">${selOpts}</select>
+            <button class="btn btn-accent btn-xs" onclick="cancelEditEntry();saveInlineEntry('${e.id}')" title="Save">✓</button>
+            <button class="btn btn-ghost btn-xs" onclick="cancelEditEntry();renderCategory()" title="Cancel">✗</button>
+          </div>
+        </td>
+      </tr>`;
+    } else {
+      const selOpts = catOptions.map(o => {
+        const val = o.match(/value="([^"]*)"/)?.[1] || "";
+        const sel = val === e.category ? "selected" : "";
+        return `<option value="${escHtml(val)}" ${sel}>${escHtml(val)}</option>`;
+      }).join("");
+
+      html += `<tr class="tr-animate" id="row-${e.id}">
+        <td class="td-date"><div style="max-width:120px;overflow-wrap:break-word">${e.date}</div></td>
+        <td class="td-task"><div style="max-width:320px;overflow-wrap:break-word;word-break:break-word">${escHtml(e.text)}</div></td>
+        <td class="td-comment"><div style="max-width:260px;overflow-wrap:break-word;word-break:break-word">${escHtml(e.comment || "—")}</div></td>
+        <td style="text-align:center">
+          <input type="checkbox" ${e.done ? "checked" : ""} onchange="toggleDone('${e.id}');renderCategory()">
+        </td>
+        <td>
+          <div class="action-btns">
+            <button class="btn btn-ghost btn-sm" onclick="startEditEntry('${e.id}')">
+              <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M8.5 1.5l2 2L3.5 10.5H1.5V8.5L8.5 1.5z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+              Edit
+            </button>
+            <button class="btn btn-danger btn-sm" onclick="deleteEntry('${e.id}')">Delete</button>
+          </div>
+        </td>
+      </tr>`;
+    }
   });
+
   html += `</tbody></table></div>`;
 
   /* Mobile card list */
   html += `<div class="entry-cards">`;
-  rows.forEach(e => {
-    html += `<div class="entry-card">
-      <div class="entry-card-top">
-        <input type="checkbox" ${e.done ? "checked" : ""} onchange="toggleDone('${e.id}');renderCategory()" style="margin-top:2px">
-        <div class="entry-card-text">${escHtml(e.text)}</div>
-        <span class="badge ${e.done ? "badge-done" : "badge-todo"}">${e.done ? "Done" : "Pending"}</span>
-      </div>
-      <div class="entry-card-meta">
-        <span class="badge badge-date">${e.date}</span>
-      </div>
-      ${e.comment ? `<div style="font-size:12px;color:var(--gray-400);font-style:italic;margin-bottom:8px;">${escHtml(e.comment)}</div>` : ""}
-      <div class="entry-card-actions">
-        <button class="btn btn-outline btn-sm" onclick="editEntry('${e.id}')">Edit</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteEntry('${e.id}')">Delete</button>
-      </div>
-    </div>`;
-  });
+  if (editingEntry) {
+    const e = data.entries.find(x => x.id === editingEntry);
+    if (e) {
+      const selOpts = catOptions.map(o => {
+        const val = o.match(/value="([^"]*)"/)?.[1] || "";
+        const sel = val === e.category ? "selected" : "";
+        return `<option value="${escHtml(val)}" ${sel}>${escHtml(val)}</option>`;
+      }).join("");
+
+      html += `<div class="entry-card" style="border-color:var(--accent);background:var(--accent-light)">
+        <div style="font-size:11px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;font-family:var(--font-mono)">Editing Entry</div>
+        <div class="form-stack" style="gap:10px">
+          <div class="form-group">
+            <label class="form-label">Date</label>
+            <input type="date" id="edit-date-${e.id}" value="${e.date}" style="width:100%">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Task</label>
+            <input type="text" id="edit-task-${e.id}" value="${escHtml(e.text)}" placeholder="Task description…">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Comment</label>
+            <input type="text" id="edit-comm-${e.id}" value="${escHtml(e.comment || "")}" placeholder="Notes…">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Category</label>
+            <select id="edit-cat-${e.id}">${selOpts}</select>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input type="checkbox" id="edit-done-${e.id}" ${e.done ? "checked" : ""}>
+            <label for="edit-done-${e.id}" style="font-size:12px;color:var(--gray-600)">Mark as done</label>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button class="btn btn-accent btn-sm" onclick="saveInlineEntry('${e.id}')" style="flex:1">Save</button>
+          <button class="btn btn-outline btn-sm" onclick="cancelEditEntry();renderCategory()" style="flex:1">Cancel</button>
+        </div>
+      </div>`;
+    }
+  } else {
+    rows.forEach(e => {
+      html += `<div class="entry-card animate-row">
+        <div class="entry-card-top">
+          <input type="checkbox" ${e.done ? "checked" : ""} onchange="toggleDone('${e.id}');renderCategory()" style="margin-top:2px">
+          <div class="entry-card-text">${escHtml(e.text)}</div>
+          <span class="badge ${e.done ? "badge-done" : "badge-todo"}">${e.done ? "Done" : "Pending"}</span>
+        </div>
+        <div class="entry-card-meta">
+          <span class="badge badge-date">${e.date}</span>
+          <span class="badge badge-cat">${escHtml(e.category)}</span>
+        </div>
+        ${e.comment ? `<div style="font-size:12px;color:var(--gray-400);font-style:italic;margin-bottom:8px;word-wrap:break-word;overflow-wrap:break-word;line-height:1.5">${escHtml(e.comment)}</div>` : ""}
+        <div class="entry-card-actions">
+          <button class="btn btn-outline btn-sm" onclick="startEditEntry('${e.id}')">
+            <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M8.5 1.5l2 2L3.5 10.5H1.5V8.5L8.5 1.5z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+            Edit
+          </button>
+          <button class="btn btn-danger btn-sm" onclick="deleteEntry('${e.id}')">Delete</button>
+        </div>
+      </div>`;
+    });
+  }
   html += `</div>`;
 
   container.innerHTML = html;
+
+  // Focus task field after entering inline edit mode
+  if (editingEntry) {
+    const taskField = document.getElementById(`edit-task-${editingEntry}`);
+    if (taskField) { taskField.focus(); taskField.select(); }
+  }
+}
+
+/** Start inline editing for an entry */
+function startEditEntry(id) {
+  editingEntry = id;
+  renderCategory();
+}
+
+/** Cancel inline edit (discard changes) */
+function cancelEditEntry() {
+  editingEntry = null;
+}
+
+/** Save inline edit changes */
+function saveInlineEntry(id) {
+  const e = data.entries.find(x => x.id === id);
+  if (!e) return;
+
+  const newDate  = document.getElementById(`edit-date-${id}`)?.value;
+  const newTask  = document.getElementById(`edit-task-${id}`)?.value.trim();
+  const newComm  = document.getElementById(`edit-comm-${id}`)?.value.trim();
+  const newCat   = document.getElementById(`edit-cat-${id}`)?.value;
+  const newDone  = document.getElementById(`edit-done-${id}`)?.checked;
+
+  if (!newTask) return showMsg("Task text cannot be empty", true);
+  if (!newCat) return showMsg("Category is required", true);
+
+  e.date     = newDate || e.date;
+  e.text     = newTask;
+  e.comment  = newComm || "";
+  e.category = newCat;
+  e.done     = !!newDone;
+
+  editingEntry = null;
+  save();
+  renderSidebar();
+  renderCategory();
+  loadHome();
+  showMsg("Entry updated ✓");
 }
 
 /** Validate and add a new entry from the category form */
@@ -1740,25 +2077,24 @@ function deleteEntry(id) {
 }
 
 /**
- * editEntry — prompt-based inline edit (upgradeable to a modal)
- * Updates text and comment; all other fields unchanged.
+ * editEntry — entry point for inline editing.
+ * If the entry belongs to a different category than currently viewed,
+ * navigates to that category first, then opens inline edit.
  */
 function editEntry(id) {
   const e = data.entries.find(x => x.id === id);
   if (!e) return;
 
-  const newText = prompt("Edit task:", e.text);
-  if (newText === null) return; // cancelled
-  const newComment = prompt("Edit comment (leave blank to clear):", e.comment || "");
-
-  if (!newText.trim()) return showMsg("Task text cannot be empty", true);
-
-  e.text    = newText.trim();
-  e.comment = newComment !== null ? newComment.trim() : e.comment;
-  save();
-  renderCategory();
-  loadHome();
-  showMsg("Entry updated ✓");
+  if (e.category !== currentCategory) {
+    currentCategory = e.category;
+    renderSidebar();
+    document.getElementById("categoryTitle").textContent = e.category;
+    showPage("category");
+    renderCategory();
+    setTimeout(() => startEditEntry(id), 50);
+  } else {
+    startEditEntry(id);
+  }
 }
 
 /* ─────────────────────────────────────────
@@ -1793,7 +2129,11 @@ function renderManage() {
 
   if (!data.categories.length) {
     document.getElementById("manageList").innerHTML =
-      `<p style="color:var(--gray-400);font-size:13px;padding:8px 0;">No categories yet. Create one above.</p>`;
+      `<div class="empty" style="padding:24px">
+        <span class="empty-icon">📂</span>
+        <div class="empty-title">No categories yet</div>
+        <div class="empty-sub">Create your first category above.</div>
+      </div>`;
     return;
   }
 
@@ -1801,17 +2141,43 @@ function renderManage() {
   data.categories.forEach((c, i) => {
     const safe  = escAttr(c);
     const count = data.entries.filter(e => e.category === c).length;
-    html += `<div class="manage-item">
+    const canMoveUp   = i > 0;
+    const canMoveDown = i < data.categories.length - 1;
+    html += `<div class="manage-item animate-row" style="animation-delay:${i * 30}ms">
+      <div class="drag-handle" title="Drag to reorder (soon)" aria-hidden="true">⠿</div>
       <div class="manage-item-icon">${i + 1}</div>
       <div class="manage-item-name">${escHtml(c)}</div>
       <span class="manage-item-count">${count} ${count === 1 ? "entry" : "entries"}</span>
-      <div class="btn-row" style="gap:6px;flex-wrap:nowrap;">
+      <div class="btn-row" style="gap:4px;flex-wrap:nowrap;align-items:center">
+        <button class="move-arrow" ${canMoveUp ? '' : 'disabled=""'} onclick="moveCategory('${safe}', -1)" title="Move up">↑</button>
+        <button class="move-arrow" ${canMoveDown ? '' : 'disabled=""'} onclick="moveCategory('${safe}', 1)" title="Move down">↓</button>
         <button class="btn btn-outline btn-sm" onclick="renameCategory('${safe}')">Rename</button>
         <button class="btn btn-danger btn-sm"  onclick="deleteCategory('${safe}')">Delete</button>
       </div>
     </div>`;
   });
   document.getElementById("manageList").innerHTML = html;
+}
+
+/**
+ * moveCategory — move a category up or down by one position in the list.
+ * @param {string} name  - category name
+ * @param {number} dir   - -1 (up) or 1 (down)
+ */
+function moveCategory(name, dir) {
+  const idx = data.categories.indexOf(name);
+  if (idx === -1) return;
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= data.categories.length) return;
+
+  // Swap positions
+  [data.categories[idx], data.categories[newIdx]] =
+  [data.categories[newIdx], data.categories[idx]];
+
+  save();
+  renderSidebar();
+  renderManage();
+  showMsg(`"${name}" moved ${dir === -1 ? "up" : "down"} ✓`);
 }
 
 /**
@@ -1973,6 +2339,154 @@ function handleImport() {
 /* ─────────────────────────────────────────
    BULK OPERATIONS
 ───────────────────────────────────────── */
+
+/**
+ * Bulk entry state: array of temporary row objects
+ * Each row: { rowId, date, task, comment, category, done }
+ */
+let bulkRows = [];
+
+function showBulkPage() {
+  if (!document.getElementById("bulkPage").classList.contains("hidden")) {
+    renderBulkRows();
+  }
+}
+
+/** Add a fresh editable row to the bulk table */
+function addBulkRow() {
+  bulkRows.push({
+    rowId: uid(),
+    date: todayStr(),
+    task: "",
+    comment: "",
+    category: data.categories[0] || "",
+    done: false
+  });
+  renderBulkRows();
+}
+
+/** Remove a single bulk row */
+function removeBulkRow(rowId) {
+  bulkRows = bulkRows.filter(r => r.rowId !== rowId);
+  renderBulkRows();
+}
+
+/** Clear all unsaved bulk rows */
+function clearBulkEntries() {
+  bulkRows = [];
+  renderBulkRows();
+}
+
+/** Validate and persist all filled-in bulk rows */
+function saveBulkEntries() {
+  // Sync current input values from DOM
+  syncBulkInputs();
+
+  const toSave = bulkRows.filter(r => r.task.trim() && r.category);
+  if (!toSave.length) return showMsg("No valid entries to save — fill in at least one task and category", true);
+
+  const invalid = bulkRows.filter(r => r.task.trim() && !r.category);
+  if (invalid.length) return showMsg(`${invalid.length} row(s) missing a category — pick one or clear the task`, true);
+
+  let count = 0;
+  toSave.forEach(r => {
+    data.entries.push({
+      id: uid(),
+      category: r.category,
+      date: r.date || todayStr(),
+      text: r.task.trim(),
+      comment: r.comment.trim(),
+      done: !!r.done
+    });
+    count++;
+  });
+
+  save();
+  renderSidebar();
+  loadHome();
+
+  // Clear all bulk rows after successful save
+  bulkRows = [];
+  renderBulkRows();
+
+  showMsg(`${count} ${count === 1 ? "entry" : "entries"} added ✓`);
+}
+
+/** Read current input values from the DOM back into bulkRows */
+function syncBulkInputs() {
+  bulkRows.forEach(r => {
+    const dateEl   = document.getElementById(`bulk-date-${r.rowId}`);
+    const taskEl   = document.getElementById(`bulk-task-${r.rowId}`);
+    const commEl   = document.getElementById(`bulk-comm-${r.rowId}`);
+    const catEl    = document.getElementById(`bulk-cat-${r.rowId}`);
+    const doneEl   = document.getElementById(`bulk-done-${r.rowId}`);
+    if (dateEl) r.date     = dateEl.value;
+    if (taskEl) r.task     = taskEl.value;
+    if (commEl) r.comment  = commEl.value;
+    if (catEl)  r.category = catEl.value;
+    if (doneEl) r.done     = doneEl.checked;
+  });
+}
+
+/** Render the bulk rows table body and toggle empty state */
+function renderBulkRows() {
+  const tbody  = document.getElementById("bulk-entries-body");
+  const empty  = document.getElementById("bulk-empty-state");
+  const count  = document.getElementById("bulk-count");
+
+  count.textContent = bulkRows.filter(r => r.task.trim()).length;
+
+  if (!bulkRows.length) {
+    tbody.innerHTML = "";
+    empty.style.display = "";
+    return;
+  }
+
+  empty.style.display = "none";
+
+  // Build category options
+  const catOptions = data.categories.map(c =>
+    `<option value="${escHtml(c)}">${escHtml(c)}</option>`
+  ).join("");
+
+  let html = "";
+  bulkRows.forEach((r, i) => {
+    html += `<tr>
+      <td><input type="date" id="bulk-date-${r.rowId}" value="${r.date || todayStr()}"
+           onchange="syncBulkInputs()"></td>
+      <td><input type="text" id="bulk-task-${r.rowId}" placeholder="Describe the task…" value="${escAttrHtml(r.task)}"
+           oninput="syncBulkInputs()"
+           onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('bulk-comm-${r.rowId}').focus()}"></td>
+      <td><input type="text" id="bulk-comm-${r.rowId}" placeholder="Notes…" value="${escAttrHtml(r.comment)}"
+           oninput="syncBulkInputs()"></td>
+      <td><select id="bulk-cat-${r.rowId}" onchange="syncBulkInputs()">${catOptions}</select></td>
+      <td style="text-align:center"><input type="checkbox" id="bulk-done-${r.rowId}" ${r.done ? "checked" : ""}
+           onchange="syncBulkInputs()"></td>
+      <td><button class="btn btn-danger btn-xs" onclick="removeBulkRow('${r.rowId}')" title="Remove row">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+              <path d="M1 1l8 8M9 1L1 9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+            </svg>
+          </button></td>
+    </tr>`;
+  });
+
+  tbody.innerHTML = html;
+
+  // Set category select default for rows that had no category or first render
+  bulkRows.forEach(r => {
+    const sel = document.getElementById(`bulk-cat-${r.rowId}`);
+    if (sel && r.category) sel.value = r.category;
+  });
+}
+
+/** Escape a string for safe use inside an HTML attribute value */
+function escAttrHtml(str) {
+  return String(str ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
 
 /** Mark all entries in the current category as done */
 function markAllDone() {
