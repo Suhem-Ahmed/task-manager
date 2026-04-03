@@ -7,7 +7,7 @@
 
 <!--
 
-version 13
+version 13.1
 ═══════════════════════════════════════════════════════════
    TASKS MANAGER  —  Usage Guide
 ═══════════════════════════════════════════════════════════
@@ -522,7 +522,7 @@ select:focus {
   background: var(--white);
   box-shadow: 0 0 0 3px rgba(79,70,229,.1);
 }
-input[type="date"] { font-family: var(--font-mono); font-size: 13px; }
+input[type="date"] { font-family: var(--font-mono); font-size: 13px; cursor: pointer; }
 select { cursor: pointer; background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%238f8f8f' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; }
 select option { background: var(--white); }
 input[type="checkbox"] {
@@ -1041,6 +1041,12 @@ tr.editing td {
 /* Stagger children slightly */
 .card > .animate-row  { animation-delay: .02s; }
 
+/* Row status colors */
+tr.status-done { background: rgba(16, 185, 129, 0.25) !important; }
+tr.status-overdue { background: rgba(239, 68, 68, 0.25) !important; }
+.entry-card.status-done { background: rgba(16, 185, 129, 0.15) !important; }
+.entry-card.status-overdue { background: rgba(239, 68, 68, 0.15) !important; }
+
 /* Reorder arrows */
 .move-arrow {
   display: inline-flex;
@@ -1155,6 +1161,10 @@ tr.editing td {
   </div>
 
   <div class="nav-spacer"></div>
+
+  <div id="currentDateDisplay" style="font-family: var(--font-mono); font-size: 11px; color: var(--gray-500); padding: 0 12px; display: flex; align-items: center; gap: 6px;">
+    <!-- Date inserted by JS -->
+  </div>
 
   <button class="nav-undo" onclick="undoLastAction()" title="Undo last destructive action">
     <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M2.5 2.5C3.4 1.6 4.6 1 6 1c2.76 0 5 2.24 5 5s-2.24 5-5 5-5-2.24-5-5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M1 1v3h3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -1618,6 +1628,22 @@ function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
 
+/** Format current date as "Day, DD Month YYYY" */
+function formattedToday() {
+  const now = new Date();
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  return `${days[now.getDay()]}, ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+}
+
+/** Update the current date display in the topnav */
+function updateCurrentDateDisplay() {
+  const el = document.getElementById("currentDateDisplay");
+  if (el) {
+    el.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.6"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>${formattedToday()}`;
+  }
+}
+
 /* ─────────────────────────────────────────
    UNDO
 ───────────────────────────────────────── */
@@ -1641,6 +1667,7 @@ async function init() {
   await load();
 
   document.getElementById("homeDate").value = todayStr();
+  updateCurrentDateDisplay();
   syncDrawerNav();
   renderSidebar();
   showPage("home");
@@ -1677,8 +1704,13 @@ function escAttr(str) {
 ───────────────────────────────────────── */
 function showPage(p) {
   // Hide all pages
-  ["homePage", "categoryPage", "managePage", "importExportPage"]
+  ["homePage", "categoryPage", "managePage", "importExportPage", "bulkPage"]
     .forEach(id => document.getElementById(id).classList.add("hidden"));
+
+  // Clear home editing state when leaving home
+  if (p !== 'home') {
+    homeEditingEntry = null;
+  }
 
   // Remove active state from all nav buttons
   document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
@@ -1712,6 +1744,7 @@ function loadHome() {
   const total = rows.length;
   const done  = rows.filter(r => r.done).length;
   const pct   = total > 0 ? Math.round((done / total) * 100) : 0;
+  const today = todayStr();
 
   let html = `
     <div class="stats-grid">
@@ -1753,33 +1786,105 @@ function loadHome() {
       </tr></thead>
       <tbody>`;
 
+    // Build category options for inline edit
+    const catOptions = data.categories.map(c =>
+      `<option value="${escHtml(c)}">${escHtml(c)}</option>`
+    ).join("");
+
     rows.forEach(e => {
-      html += `<tr>
-        <td><span class="badge badge-cat">${escHtml(e.category)}</span></td>
-        <td class="td-date">${e.date}</td>
-        <td class="td-task">${escHtml(e.text)}</td>
-        <td class="td-comment">${escHtml(e.comment || "—")}</td>
-        <td style="text-align:center">
-          <input type="checkbox" ${e.done ? "checked" : ""} onchange="toggleDone('${e.id}');loadHome()">
-        </td>
-        <td>
-          <div class="action-btns">
-            <button class="btn btn-ghost btn-sm"  onclick="editEntry('${e.id}')">Edit</button>
-            <button class="btn btn-danger btn-sm" onclick="deleteEntry('${e.id}')">Delete</button>
-          </div>
-        </td>
-      </tr>`;
+      const isPastOrToday = e.date <= today;
+      const statusClass = e.done ? "status-done" : (isPastOrToday ? "status-overdue" : "");
+
+      if (homeEditingEntry === e.id) {
+        // Editing row
+        const selOpts = data.categories.map(c =>
+          `<option value="${escHtml(c)}" ${c === e.category ? "selected" : ""}>${escHtml(c)}</option>`
+        ).join("");
+
+        html += `<tr class="editing animate-row">
+          <td><input type="date" class="inline-edit-date" id="home-edit-date-${e.id}" value="${e.date}"></td>
+          <td><input type="text" class="inline-edit" id="home-edit-task-${e.id}" value="${escHtml(e.text)}" placeholder="Task description…"></td>
+          <td><input type="text" class="inline-edit" id="home-edit-comm-${e.id}" value="${escHtml(e.comment || "")}" placeholder="Notes…"></td>
+          <td style="text-align:center">
+            <input type="checkbox" id="home-edit-done-${e.id}" ${e.done ? "checked" : ""} style="margin:0 auto;display:block">
+          </td>
+          <td>
+            <div class="action-btns" style="align-items:center">
+              <select class="inline-select" id="home-edit-cat-${e.id}" style="width:90px">${selOpts}</select>
+              <button class="btn btn-accent btn-xs" onclick="saveHomeInlineEntry('${e.id}')" title="Save">✓</button>
+              <button class="btn btn-ghost btn-xs" onclick="cancelHomeEditEntry();loadHome()" title="Cancel">✗</button>
+            </div>
+          </td>
+        </tr>`;
+      } else {
+        // Normal row
+        html += `<tr class="${statusClass}">
+          <td><span class="badge badge-cat">${escHtml(e.category)}</span></td>
+          <td class="td-date">${e.date}</td>
+          <td class="td-task">${escHtml(e.text)}</td>
+          <td class="td-comment">${escHtml(e.comment || "—")}</td>
+          <td style="text-align:center">
+            <input type="checkbox" ${e.done ? "checked" : ""} onchange="toggleDone('${e.id}');loadHome()">
+          </td>
+          <td>
+            <div class="action-btns">
+              <button class="btn btn-ghost btn-sm" onclick="startHomeEditEntry('${e.id}')">Edit</button>
+              <button class="btn btn-danger btn-sm" onclick="deleteEntry('${e.id}')">Delete</button>
+            </div>
+          </td>
+        </tr>`;
+      }
     });
     html += `</tbody></table></div>`;
 
     /* Mobile card list */
     html += `<div class="entry-cards">`;
     rows.forEach(e => {
-      html += `<div class="entry-card">
-        <div class="entry-card-top">
-          <input type="checkbox" ${e.done ? "checked" : ""} onchange="toggleDone('${e.id}');loadHome()" style="margin-top:2px">
-          <div class="entry-card-text">${escHtml(e.text)}</div>
-        </div>
+      const isPastOrToday = e.date <= today;
+      const statusClass = e.done ? "status-done" : (isPastOrToday ? "status-overdue" : "");
+
+      if (homeEditingEntry === e.id) {
+        // Editing card
+        const selOpts = data.categories.map(c =>
+          `<option value="${escHtml(c)}" ${c === e.category ? "selected" : ""}>${escHtml(c)}</option>`
+        ).join("");
+
+        html += `<div class="entry-card editing animate-row" style="border-color:var(--accent);background:var(--accent-light)">
+          <div style="font-size:11px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;font-family:var(--font-mono)">Editing Entry</div>
+          <div class="form-stack" style="gap:10px">
+            <div class="form-group">
+              <label class="form-label">Date</label>
+              <input type="date" id="home-edit-date-${e.id}" value="${e.date}" style="width:100%">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Task</label>
+              <input type="text" id="home-edit-task-${e.id}" value="${escHtml(e.text)}" placeholder="Task description…">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Comment</label>
+              <input type="text" id="home-edit-comm-${e.id}" value="${escHtml(e.comment || "")}" placeholder="Notes…">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Category</label>
+              <select id="home-edit-cat-${e.id}">${selOpts}</select>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <input type="checkbox" id="home-edit-done-${e.id}" ${e.done ? "checked" : ""}>
+              <label for="home-edit-done-${e.id}" style="font-size:12px;color:var(--gray-600)">Mark as done</label>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <button class="btn btn-accent btn-sm" onclick="saveHomeInlineEntry('${e.id}')" style="flex:1">Save</button>
+            <button class="btn btn-outline btn-sm" onclick="cancelHomeEditEntry();loadHome()" style="flex:1">Cancel</button>
+          </div>
+        </div>`;
+      } else {
+        // Normal mobile card
+        html += `<div class="entry-card animate-row ${statusClass}">
+          <div class="entry-card-top">
+            <input type="checkbox" ${e.done ? "checked" : ""} onchange="toggleDone('${e.id}');loadHome()" style="margin-top:2px">
+            <div class="entry-card-text">${escHtml(e.text)}</div>
+          </div>
         <div class="entry-card-meta">
           <span class="badge badge-cat">${escHtml(e.category)}</span>
           <span class="badge badge-date">${e.date}</span>
@@ -1787,15 +1892,61 @@ function loadHome() {
         </div>
         ${e.comment ? `<div style="font-size:12px;color:var(--gray-400);font-style:italic;margin-bottom:8px;word-wrap:break-word;overflow-wrap:break-word;line-height:1.5;">${escHtml(e.comment)}</div>` : ""}
         <div class="entry-card-actions">
-          <button class="btn btn-outline btn-sm" onclick="editEntry('${e.id}')">Edit</button>
+          <button class="btn btn-outline btn-sm" onclick="startHomeEditEntry('${e.id}')">Edit</button>
           <button class="btn btn-danger btn-sm" onclick="deleteEntry('${e.id}')">Delete</button>
         </div>
       </div>`;
+      }
     });
     html += `</div>`;
   }
 
   document.getElementById("homeResults").innerHTML = html;
+
+  // Auto-focus task field if editing
+  if (homeEditingEntry) {
+    const taskField = document.getElementById(`home-edit-task-${homeEditingEntry}`);
+    if (taskField) { taskField.focus(); taskField.select(); }
+  }
+}
+
+/** Start inline editing for an entry from the home page */
+function startHomeEditEntry(id) {
+  homeEditingEntry = id;
+  loadHome();
+}
+
+/** Cancel home page inline edit */
+function cancelHomeEditEntry() {
+  homeEditingEntry = null;
+}
+
+/** Save inline edit changes from home page */
+async function saveHomeInlineEntry(id) {
+  const e = data.entries.find(x => x.id === id);
+  if (!e) return;
+
+  const newDate = document.getElementById(`home-edit-date-${id}`)?.value;
+  const newTask = document.getElementById(`home-edit-task-${id}`)?.value.trim();
+  const newComm = document.getElementById(`home-edit-comm-${id}`)?.value.trim();
+  const newCat = document.getElementById(`home-edit-cat-${id}`)?.value;
+  const newDone = document.getElementById(`home-edit-done-${id}`)?.checked;
+
+  if (!newTask) return showMsg("Task text cannot be empty", true);
+  if (!newCat) return showMsg("Category is required", true);
+
+  backup();
+  e.date = newDate || e.date;
+  e.text = newTask;
+  e.comment = newComm || "";
+  e.category = newCat;
+  e.done = !!newDone;
+
+  homeEditingEntry = null;
+  await save();
+  renderSidebar();
+  loadHome();
+  showMsg("Entry updated ✓");
 }
 
 /* ─────────────────────────────────────────
@@ -1817,10 +1968,14 @@ function openCategory(c) {
 
 /** Which entry is currently being inline-edited (null = none) */
 let editingEntry = null;
+let homeEditingEntry = null; // For home page inline editing
 
 /** Render the category entry table / card list */
 function renderCategory() {
   const rows = data.entries.filter(e => e.category === currentCategory);
+  // Sort by date ascending (oldest to newest)
+  rows.sort((a, b) => a.date.localeCompare(b.date));
+  const today = todayStr();
   const container = document.getElementById("categoryTable");
 
   if (!rows.length) {
@@ -1848,13 +2003,13 @@ function renderCategory() {
 
   rows.forEach(e => {
     const isEditing = e.id === editingEntry;
+    const isPastOrToday = e.date <= today;
+    const statusClass = e.done ? "status-done" : (isPastOrToday ? "status-overdue" : "");
 
     if (isEditing) {
-      const selOpts = catOptions.map(o => {
-        const val = o.match(/value="([^"]*)"/)?.[1] || "";
-        const sel = val === e.category ? "selected" : "";
-        return `<option value="${escHtml(val)}" ${sel}>${escHtml(val)}</option>`;
-      }).join("");
+      const selOpts = data.categories.map(c =>
+        `<option value="${escHtml(c)}" ${c === e.category ? "selected" : ""}>${escHtml(c)}</option>`
+      ).join("");
 
       html += `<tr class="editing animate-row">
         <td><input type="date" class="inline-edit-date" id="edit-date-${e.id}" value="${e.date}"></td>
@@ -1872,13 +2027,7 @@ function renderCategory() {
         </td>
       </tr>`;
     } else {
-      const selOpts = catOptions.map(o => {
-        const val = o.match(/value="([^"]*)"/)?.[1] || "";
-        const sel = val === e.category ? "selected" : "";
-        return `<option value="${escHtml(val)}" ${sel}>${escHtml(val)}</option>`;
-      }).join("");
-
-      html += `<tr class="tr-animate" id="row-${e.id}">
+      html += `<tr class="tr-animate ${statusClass}" id="row-${e.id}">
         <td class="td-date"><div style="max-width:120px;overflow-wrap:break-word">${e.date}</div></td>
         <td class="td-task"><div style="max-width:320px;overflow-wrap:break-word;word-break:break-word">${escHtml(e.text)}</div></td>
         <td class="td-comment"><div style="max-width:260px;overflow-wrap:break-word;word-break:break-word">${escHtml(e.comment || "—")}</div></td>
@@ -1943,7 +2092,10 @@ function renderCategory() {
     }
   } else {
     rows.forEach(e => {
-      html += `<div class="entry-card animate-row">
+      const isPastOrToday = e.date <= today;
+      const statusClass = e.done ? "status-done" : (isPastOrToday ? "status-overdue" : "");
+
+      html += `<div class="entry-card animate-row ${statusClass}">
         <div class="entry-card-top">
           <input type="checkbox" ${e.done ? "checked" : ""} onchange="toggleDone('${e.id}');renderCategory()" style="margin-top:2px">
           <div class="entry-card-text">${escHtml(e.text)}</div>
@@ -2354,12 +2506,13 @@ function showBulkPage() {
 
 /** Add a fresh editable row to the bulk table */
 function addBulkRow() {
+  const lastRow = bulkRows.length > 0 ? bulkRows[bulkRows.length - 1] : null;
   bulkRows.push({
     rowId: uid(),
-    date: todayStr(),
+    date: lastRow ? lastRow.date : todayStr(),
     task: "",
     comment: "",
-    category: data.categories[0] || "",
+    category: lastRow ? lastRow.category : (data.categories[0] || ""),
     done: false
   });
   renderBulkRows();
